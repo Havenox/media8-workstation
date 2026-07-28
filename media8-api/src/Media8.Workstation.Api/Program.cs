@@ -65,15 +65,43 @@ if (string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddDbContext<WorkstationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// 6. CORS Configuration for Frontend SPA
+// 6. Dynamic CORS Configuration (Toggle via CORS_RESTRICTED & CORS_ALLOWED_ORIGINS)
+var corsRestrictedRaw = builder.Configuration["CORS_RESTRICTED"];
+var isCorsRestricted = bool.TryParse(corsRestrictedRaw, out var restricted) && restricted;
+var corsAllowedOriginsRaw = builder.Configuration["CORS_ALLOWED_ORIGINS"]
+    ?? "http://localhost:3000,http://localhost:5173";
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        if (isCorsRestricted)
+        {
+            var allowedOrigins = corsAllowedOriginsRaw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (allowedOrigins.Length > 0)
+            {
+                policy.WithOrigins(allowedOrigins)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            }
+            else
+            {
+                policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            }
+        }
+        else
+        {
+            policy.SetIsOriginAllowed(_ => true)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
     });
 });
 
