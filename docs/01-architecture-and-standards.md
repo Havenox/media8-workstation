@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 2.8.0  
+> *Versão:* 2.9.0  
 > *Status:* Ativo  
 
 ---
@@ -37,7 +37,15 @@ O Dashboard e os contadores de metadados da aplicação consomem dados numérico
 
 ---
 
-## 4. Pipeline de Processamento de Avatares, Expurgo de Disco & Segurança de Credenciais
+## 4. Pipeline de Atribuições de Projetos, Lead Editor & Funções PAM
+
+1. **Contagem Real de Atribuições**: A coluna **Projetos Atribuídos** na tabela de usuários exibe a quantidade exata de projetos em que o usuário está ativamente atribuído (tanto para Admins quanto para Editores). O privilégio de Admin concede acesso global, mas não infla a contagem de atribuição.
+2. **Editor Responsável (Lead Editor)**: Todo projeto possui **1 Editor Responsável** (`LeadUserId`) obrigatório.
+3. **Funções da Atribuição (PAM Roles)**: Editores vinculados a um projeto possuem funções específicas (`General`, `Decoupage`, `AudioTreatment`, `ColorGrading`, `MotionGraphics`, `Reviewer`).
+
+---
+
+## 5. Pipeline de Processamento de Avatares, Expurgo de Disco & Segurança de Credenciais
 
 1. **Recorte Interativo 1:1 & Validação MIME**: O frontend valida o tipo de imagem e apresenta um modal interativo de recorte 1:1 (`AvatarCropModal.tsx`) com slider simétrico de zoom (-100 a +100) e botão de reset.
 2. **Input Sutil de URL Externa**: Modal de usuário apresenta caixa minimalista de URL com trava ativada por ícone de lápis interno (`Pencil`).
