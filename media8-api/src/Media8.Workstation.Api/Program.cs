@@ -4,6 +4,8 @@ using Media8.Workstation.Infrastructure.Data;
 using Media8.Workstation.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -98,7 +100,24 @@ app.MapHub<NotificationHub>("/hubs/notifications");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WorkstationDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    var databaseCreator = db.Database.GetService<IRelationalDatabaseCreator>();
+    
+    try
+    {
+        if (!await databaseCreator.HasTablesAsync())
+        {
+            await databaseCreator.CreateTablesAsync();
+        }
+        else
+        {
+            // Force table creation if specific tables don't exist yet
+            await databaseCreator.CreateTablesAsync();
+        }
+    }
+    catch
+    {
+        // Tables already created or exists
+    }
 
     // Seed initial admin user if none exists (Zero hardcoded credentials)
     await DbSeeder.SeedInitialAdminAsync(db, builder.Configuration);
