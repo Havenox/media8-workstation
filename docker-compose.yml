@@ -8,6 +8,11 @@ services:
     environment:
       - ConnectionStrings__PostgreSQL=${DB_CONNECTION_STRING}
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - INITIAL_ADMIN_EMAIL=${INITIAL_ADMIN_EMAIL:-admin@media8.com}
+      - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD:-SenhaAdminSegura123!}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-S3cur3S3cr3tKeyM3dia8Workstati0n2026!Min32Chars}
+      - JWT_ISSUER=${JWT_ISSUER:-Media8Workstation}
+      - JWT_AUDIENCE=${JWT_AUDIENCE:-Media8WorkstationUsers}
     ports:
       - "${API_PORT:-5000}:5000"
     volumes:
@@ -15,8 +20,8 @@ services:
 
   worker-ingestion:
     build:
-      context: ./media8-workers
-      dockerfile: Dockerfile.workers
+      context: .
+      dockerfile: ./media8-workers/Dockerfile.workers
       args:
         WORKER_PROJECT: Media8.Workstation.Worker.Ingestion
     container_name: media8_workstation_worker_ingestion
@@ -29,8 +34,8 @@ services:
 
   worker-transcoder:
     build:
-      context: ./media8-workers
-      dockerfile: Dockerfile.workers
+      context: .
+      dockerfile: ./media8-workers/Dockerfile.workers
       args:
         WORKER_PROJECT: Media8.Workstation.Worker.Transcoder
     container_name: media8_workstation_worker_transcoder
