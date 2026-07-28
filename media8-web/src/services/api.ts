@@ -11,6 +11,8 @@ import type {
   ProjectLink,
   PagedResult,
   ProjectStats,
+  UserStats,
+  UpdateUserRequest,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -66,13 +68,28 @@ export const AuthService = {
 };
 
 export const UserService = {
-  getUsers: async (): Promise<User[]> => {
-    const response = await api.get<User[]>('/Users');
+  getUserStats: async (): Promise<UserStats> => {
+    const response = await api.get<UserStats>('/Users/Stats');
+    return response.data;
+  },
+
+  getUsers: async (params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    role?: string;
+  }): Promise<PagedResult<User>> => {
+    const response = await api.get<PagedResult<User>>('/Users', { params });
     return response.data;
   },
 
   createUser: async (data: CreateUserRequest): Promise<User> => {
     const response = await api.post<User>('/Users', data);
+    return response.data;
+  },
+
+  updateUser: async (id: string, data: UpdateUserRequest): Promise<User> => {
+    const response = await api.put<User>(`/Users/${id}`, data);
     return response.data;
   },
 };

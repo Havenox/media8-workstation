@@ -1,39 +1,144 @@
-import React, { useState } from 'react';
-import { UserPlus, Crown, Video, Loader2 } from 'lucide-react';
-import type { User, Project } from '../types';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { UserPlus, Crown, Video, Loader2, Search, Edit2, Key, Mail, User as UserIcon } from 'lucide-react';
+import type { User, Project, UserStats } from '../types';
 import { UserService } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { UserRoleSelect } from '../components/UserRoleSelect';
+import { UserRoleSelect, UserRoleOption } from '../components/UserRoleSelect';
 
 interface UsersPageProps {
-  users: User[];
   projects: Project[];
   currentUser: User;
-  onRefreshUsers: () => void;
+  onRefreshUsers?: () => void;
 }
 
 export const UsersPage: React.FC<UsersPageProps> = ({
-  users,
   projects,
   currentUser,
   onRefreshUsers,
 }) => {
+  // State for Users List & Pagination
+  const [users, setUsers] = useState<User[]>([]);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [page, setPage] = useState<number>(1);
+  const [hasNextPage, setHasNextPage] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isFetchingMore, setIsFetchingMore] = useState<boolean>(false);
+
+  // Filters State
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
+
+  // Modals State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  // Form State (Create/Edit)
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'Admin' | 'Editor'>('Editor');
-  const [isCreating, setIsCreating] = useState(false);
+  const [role, setRole] = useState<UserRoleOption>('Editor');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Intersection Observer Sentinel Ref
+  const observerSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Debounce search input (300ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Load User Statistics
+  const loadUserStats = async () => {
+    try {
+      const data = await UserService.getUserStats();
+      setStats(data);
+    } catch (err) {
+      console.error('Erro ao carregar estatísticas de usuários:', err);
+    }
+  };
+
+  // Fetch Users (Page 1 vs Next Pages)
+  const fetchUsers = useCallback(
+    async (pageToFetch: number, isInitial: boolean = false) => {
+      try {
+        if (isInitial) {
+          setIsLoading(true);
+        } else {
+          setIsFetchingMore(true);
+        }
+
+        const res = await UserService.getUsers({
+          page: pageToFetch,
+          pageSize: 20,
+          search: debouncedSearch,
+          role: roleFilter,
+        });
+
+        if (isInitial) {
+          setUsers(res.Items || []);
+        } else {
+          setUsers((prev) => [...prev, ...(res.Items || [])]);
+        }
+
+        setHasNextPage(res.HasNextPage);
+        setPage(pageToFetch);
+      } catch (err) {
+        console.error('Erro ao buscar usuários:', err);
+      } finally {
+        setIsLoading(false);
+        setIsFetchingMore(false);
+      }
+    },
+    [debouncedSearch, roleFilter]
+  );
+
+  // Trigger initial load when search or filter changes
+  useEffect(() => {
+    fetchUsers(1, true);
+    loadUserStats();
+  }, [fetchUsers]);
+
+  // IntersectionObserver for Infinite Scroll
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const target = entries[0];
+      if (target.isIntersecting && hasNextPage && !isLoading && !isFetchingMore) {
+        fetchUsers(page + 1, false);
+      }
+    },
+    [hasNextPage, isLoading, isFetchingMore, page, fetchUsers]
+  );
+
+  useEffect(() => {
+    const option = { root: null, rootMargin: '100px', threshold: 0.1 };
+    const observer = new IntersectionObserver(handleObserver, option);
+    if (observerSentinelRef.current) observer.observe(observerSentinelRef.current);
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  // Handlers for Create User
+  const handleOpenCreateModal = () => {
+    setName('');
+    setEmail('');
+    setPassword('');
+    setRole('Editor');
+    setIsCreateModalOpen(true);
+  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !password) return;
 
     try {
-      setIsCreating(true);
+      setIsSubmitting(true);
       await UserService.createUser({
         Name: name.trim(),
         Email: email.trim(),
@@ -41,16 +146,49 @@ export const UsersPage: React.FC<UsersPageProps> = ({
         Role: role,
       });
 
-      setName('');
-      setEmail('');
-      setPassword('');
-      setRole('Editor');
       setIsCreateModalOpen(false);
-      onRefreshUsers();
-    } catch (err) {
-      alert('Erro ao criar usuário. Verifique se o e-mail já não está cadastrado.');
+      fetchUsers(1, true);
+      loadUserStats();
+      if (onRefreshUsers) onRefreshUsers();
+    } catch (err: any) {
+      alert(err.response?.data?.Message || 'Erro ao cadastrar usuário.');
     } finally {
-      setIsCreating(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handlers for Edit User
+  const handleOpenEditModal = (userToEdit: User) => {
+    setEditingUser(userToEdit);
+    setName(userToEdit.Name);
+    setEmail(userToEdit.Email);
+    setRole(userToEdit.Role as UserRoleOption);
+    setPassword(''); // Opcional na edição
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser || !name.trim() || !email.trim()) return;
+
+    try {
+      setIsSubmitting(true);
+      await UserService.updateUser(editingUser.UserId, {
+        Name: name.trim(),
+        Email: email.trim(),
+        Role: role,
+        Password: password.trim() ? password.trim() : undefined,
+      });
+
+      setIsEditModalOpen(false);
+      setEditingUser(null);
+      fetchUsers(1, true);
+      loadUserStats();
+      if (onRefreshUsers) onRefreshUsers();
+    } catch (err: any) {
+      alert(err.response?.data?.Message || 'Erro ao atualizar usuário.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -59,16 +197,16 @@ export const UsersPage: React.FC<UsersPageProps> = ({
       {/* Header Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-[#400404] tracking-tight">Usuários & Atribuições RBAC</h2>
+          <h2 className="text-2xl font-semibold text-[#400404] tracking-tight">Usuários</h2>
           <p className="text-xs text-[#5C1212]/80 font-normal mt-0.5">
-            Gestão de contas de acesso à Workstation. Somente Administradores podem cadastrar novos usuários.
+            Gestão de contas de acesso e permissões RBAC da estação Media 8.
           </p>
         </div>
 
         {currentUser.Role === 'Admin' && (
           <Button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] text-xs font-medium py-2.5 px-4 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all"
+            onClick={handleOpenCreateModal}
+            className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] text-xs font-medium py-2.5 px-4 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all shrink-0"
           >
             <UserPlus className="w-4 h-4" />
             <span>Novo Usuário</span>
@@ -76,73 +214,159 @@ export const UsersPage: React.FC<UsersPageProps> = ({
         )}
       </div>
 
+      {/* Search Bar & Role Filters */}
+      <div className="bg-white p-4 rounded-xl border border-[#400404]/15 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Search Bar */}
+        <div className="relative w-full md:w-80">
+          <Search className="w-4 h-4 text-[#400404]/60 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Input
+            type="text"
+            placeholder="Buscar por nome ou e-mail..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 bg-[#FFFBED]/50 border-[#400404]/20 rounded-xl text-xs font-normal text-[#400404]"
+          />
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <button
+            onClick={() => setRoleFilter('ALL')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border ${
+              roleFilter === 'ALL'
+                ? 'bg-[#400404] text-[#FFFBED] border-[#400404] shadow-xs'
+                : 'bg-white text-[#400404] border-[#400404]/20 hover:bg-[#FFFBED]'
+            }`}
+          >
+            Todos ({stats?.TotalUsers ?? users.length})
+          </button>
+
+          <button
+            onClick={() => setRoleFilter('Admin')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border inline-flex items-center gap-1.5 ${
+              roleFilter === 'Admin'
+                ? 'bg-[#400404] text-[#FFFBED] border-[#400404] shadow-xs'
+                : 'bg-white text-[#400404] border-[#400404]/20 hover:bg-[#FFFBED]'
+            }`}
+          >
+            <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span>Admins ({stats?.AdminCount ?? 0})</span>
+          </button>
+
+          <button
+            onClick={() => setRoleFilter('Editor')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border inline-flex items-center gap-1.5 ${
+              roleFilter === 'Editor'
+                ? 'bg-[#400404] text-[#FFFBED] border-[#400404] shadow-xs'
+                : 'bg-white text-[#400404] border-[#400404]/20 hover:bg-[#FFFBED]'
+            }`}
+          >
+            <Video className="w-3.5 h-3.5 text-[#400404]/70 shrink-0" />
+            <span>Editores ({stats?.EditorCount ?? 0})</span>
+          </button>
+        </div>
+      </div>
+
       {/* Users Table */}
       <div className="bg-white rounded-xl border border-[#400404]/15 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-[#400404]/10 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-[#400404] tracking-tight">Equipe da Produtora</h3>
-          <span className="text-xs font-mono font-medium text-[#5C1212]/80">{users.length} usuários cadastrados</span>
+          <span className="text-xs font-mono font-medium text-[#5C1212]/80">
+            {stats ? stats.TotalUsers : users.length} usuários cadastrados
+          </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-[#400404]">
-            <thead className="bg-[#400404] text-[#FFFBED] uppercase font-mono font-medium border-b border-[#400404]">
-              <tr>
-                <th className="p-3.5">Usuário</th>
-                <th className="p-3.5">E-mail</th>
-                <th className="p-3.5">Papel (RBAC)</th>
-                <th className="p-3.5">Data de Cadastro</th>
-                <th className="p-3.5 text-right">Projetos Atribuídos</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#400404]/10">
-              {users.map((u) => (
-                <tr key={u.UserId} className="hover:bg-[#FFFBED]/60 transition-colors">
-                  <td className="p-3.5 font-semibold text-[#400404]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center shadow-xs">
-                        {u.Name.charAt(0).toUpperCase()}
-                      </div>
-                      <span>{u.Name}</span>
-                    </div>
-                  </td>
-                  <td className="p-3.5 font-mono font-medium text-[#5C1212]">{u.Email}</td>
-                  <td className="p-3.5">
-                    {u.Role === 'Admin' ? (
-                      <Badge className="bg-[#400404] text-[#FFFBED] font-medium text-[10px] gap-1 px-2.5 py-0.5 rounded-full inline-flex items-center border border-[#400404]">
-                        <Crown className="w-3 h-3 text-amber-400 shrink-0" />
-                        <span>Admin</span>
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="border-[#400404]/20 bg-[#FFFBED] text-[#400404] font-medium text-[10px] gap-1 px-2.5 py-0.5 rounded-full inline-flex items-center">
-                        <Video className="w-3 h-3 text-[#400404]/70 shrink-0" />
-                        <span>Editor</span>
-                      </Badge>
-                    )}
-                  </td>
-                  <td className="p-3.5 font-mono font-normal text-[#5C1212]/80">
-                    {new Date(u.CreatedAt).toLocaleDateString('pt-BR')}
-                  </td>
-                  <td className="p-3.5 text-right font-medium text-[#400404]">
-                    {u.Role === 'Admin' ? (
-                      <span className="text-emerald-800 font-medium">Acesso Global (Todos)</span>
-                    ) : (
-                      <span>{projects.length} Projetos</span>
-                    )}
-                  </td>
+        {isLoading ? (
+          <div className="p-12 text-center text-xs text-[#5C1212]/80 flex flex-col items-center justify-center gap-2 font-normal">
+            <Loader2 className="w-6 h-6 animate-spin text-[#400404]" />
+            <span>Carregando usuários...</span>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="p-12 text-center text-xs text-[#400404] font-normal italic">
+            Nenhum usuário encontrado com os filtros selecionados.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-[#400404]">
+              <thead className="bg-[#400404] text-[#FFFBED] uppercase font-mono font-medium border-b border-[#400404]">
+                <tr>
+                  <th className="p-3.5">Usuário</th>
+                  <th className="p-3.5">E-mail</th>
+                  <th className="p-3.5">Papel (RBAC)</th>
+                  <th className="p-3.5">Data de Cadastro</th>
+                  <th className="p-3.5 text-right">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#400404]/10">
+                {users.map((u) => (
+                  <tr
+                    key={u.UserId}
+                    className="hover:bg-[#FFFBED]/60 transition-colors group cursor-pointer"
+                    onClick={() => currentUser.Role === 'Admin' && handleOpenEditModal(u)}
+                  >
+                    <td className="p-3.5 font-semibold text-[#400404]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center shadow-xs">
+                          {u.Name ? u.Name.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <span>{u.Name}</span>
+                      </div>
+                    </td>
+                    <td className="p-3.5 font-mono font-medium text-[#5C1212]">{u.Email}</td>
+                    <td className="p-3.5">
+                      {u.Role === 'Admin' ? (
+                        <Badge className="bg-[#400404] text-[#FFFBED] font-medium text-[10px] gap-1 px-2.5 py-0.5 rounded-full inline-flex items-center border border-[#400404]">
+                          <Crown className="w-3 h-3 text-amber-400 shrink-0" />
+                          <span>Admin</span>
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-[#400404]/20 bg-[#FFFBED] text-[#400404] font-medium text-[10px] gap-1 px-2.5 py-0.5 rounded-full inline-flex items-center">
+                          <Video className="w-3 h-3 text-[#400404]/70 shrink-0" />
+                          <span>Editor</span>
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="p-3.5 font-mono font-normal text-[#5C1212]/80">
+                      {new Date(u.CreatedAt).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="p-3.5 text-right font-medium text-[#400404]">
+                      {currentUser.Role === 'Admin' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditModal(u);
+                          }}
+                          className="text-xs font-medium border-[#400404]/20 hover:bg-[#400404] hover:text-[#FFFBED] transition-colors rounded-lg py-1 px-2.5 flex items-center gap-1.5 ml-auto cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Editar</span>
+                        </Button>
+                      ) : (
+                        <span className="text-[#5C1212]/60 font-normal">Apenas Leitura</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Infinite Scroll Sentinel */}
+        <div ref={observerSentinelRef} className="h-6 w-full flex items-center justify-center p-2">
+          {isFetchingMore && <Loader2 className="w-4 h-4 animate-spin text-[#400404]/70" />}
         </div>
       </div>
 
-      {/* Modal: Criar Usuário */}
+      {/* Modal: Cadastrar Usuário */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent className="bg-[#FFFBED] border border-[#400404]/20 text-[#400404] max-w-md rounded-2xl p-6 shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-[#400404] tracking-tight">Cadastrar Novo Usuário</DialogTitle>
             <DialogDescription className="text-xs text-[#5C1212]/80 font-normal">
-              Crie o login e defina a permissão de acesso para o membro da equipe.
+              Crie a conta de acesso para o membro da equipe da produtora.
             </DialogDescription>
           </DialogHeader>
 
@@ -199,16 +423,93 @@ export const UsersPage: React.FC<UsersPageProps> = ({
               </Button>
               <Button
                 type="submit"
-                disabled={isCreating || !name.trim() || !email.trim() || !password}
+                disabled={isSubmitting || !name.trim() || !email.trim() || !password}
                 className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs rounded-xl cursor-pointer"
               >
-                {isCreating ? (
+                {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     <span>Cadastrando...</span>
                   </>
                 ) : (
                   <span>Cadastrar Usuário</span>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Editar Usuário */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="bg-[#FFFBED] border border-[#400404]/20 text-[#400404] max-w-md rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-[#400404] tracking-tight">Editar Usuário</DialogTitle>
+            <DialogDescription className="text-xs text-[#5C1212]/80 font-normal">
+              Atualize as informações de cadastro, papel RBAC ou redefina a senha.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateUser} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#400404]">Nome Completo *</label>
+              <Input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="bg-white text-xs font-normal text-[#400404] border-[#400404]/20 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#400404]">E-mail de Acesso *</label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#400404]">Redefinir Senha (Opcional)</label>
+              <Input
+                type="password"
+                placeholder="Deixe em branco para manter a senha atual"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-white text-xs font-normal text-[#400404] border-[#400404]/20 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#400404]">Papel (RBAC) *</label>
+              <UserRoleSelect value={role} onChange={setRole} />
+            </div>
+
+            <DialogFooter className="pt-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-xs font-medium border-[#400404]/20 rounded-xl"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !name.trim() || !email.trim()}
+                className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs rounded-xl cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <span>Salvando...</span>
+                  </>
+                ) : (
+                  <span>Salvar Alterações</span>
                 )}
               </Button>
             </DialogFooter>

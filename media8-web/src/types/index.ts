@@ -26,6 +26,19 @@ export interface CreateUserRequest {
   Role: 'Admin' | 'Editor';
 }
 
+export interface UpdateUserRequest {
+  Name: string;
+  Email: string;
+  Role: 'Admin' | 'Editor';
+  Password?: string;
+}
+
+export interface UserStats {
+  TotalUsers: number;
+  AdminCount: number;
+  EditorCount: number;
+}
+
 export interface ProjectStats {
   TotalCount: number;
   InProductionCount: number;
