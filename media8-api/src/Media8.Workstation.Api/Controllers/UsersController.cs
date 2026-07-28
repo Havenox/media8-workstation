@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Media8.Workstation.Api.Controllers;
 
+/// <summary>
+/// Controlador restrito a Administradores para listagem e cadastramento exclusivo de novos usuários.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "Admin")]
@@ -15,6 +18,10 @@ public class UsersController(WorkstationDbContext context) : ControllerBase
 {
     private static readonly PasswordHasher<User> _passwordHasher = new();
 
+    /// <summary>
+    /// Lista todos os usuários cadastrados na plataforma.
+    /// </summary>
+    /// <returns>Coleção de UserDto em PascalCase.</returns>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
     {
@@ -34,6 +41,11 @@ public class UsersController(WorkstationDbContext context) : ControllerBase
         return Ok(users);
     }
 
+    /// <summary>
+    /// Cadastra um novo usuário no sistema (Editor ou Admin). Endpoint exclusivo para Administradores.
+    /// </summary>
+    /// <param name="request">DTO contendo Nome, Email, Senha e Role do novo usuário.</param>
+    /// <returns>UserDto do usuário recém-criado.</returns>
     [HttpPost]
     public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserRequest request)
     {

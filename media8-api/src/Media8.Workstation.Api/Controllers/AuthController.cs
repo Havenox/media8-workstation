@@ -10,12 +10,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Media8.Workstation.Api.Controllers;
 
+/// <summary>
+/// Controlador responsável pelo fluxo de autenticação pública e gerenciamento de perfil/senha.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController(WorkstationDbContext context, JwtTokenService tokenService) : ControllerBase
 {
     private static readonly PasswordHasher<User> _passwordHasher = new();
 
+    /// <summary>
+    /// Realiza a autenticação de usuários cadastrados e emite um token Bearer JWT.
+    /// </summary>
+    /// <param name="request">DTO contendo Email e Password do usuário.</param>
+    /// <returns>AuthResponse em PascalCase com Token JWT e perfil do usuário.</returns>
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
@@ -51,6 +59,10 @@ public class AuthController(WorkstationDbContext context, JwtTokenService tokenS
         });
     }
 
+    /// <summary>
+    /// Retorna as informações do perfil do usuário atualmente autenticado.
+    /// </summary>
+    /// <returns>UserDto em PascalCase com o perfil do usuário ativo.</returns>
     [HttpGet("me")]
     [Authorize]
     public async Task<ActionResult<UserDto>> GetCurrentUser()
@@ -77,6 +89,11 @@ public class AuthController(WorkstationDbContext context, JwtTokenService tokenS
         });
     }
 
+    /// <summary>
+    /// Altera a senha do usuário autenticado após validar a senha atual.
+    /// </summary>
+    /// <param name="request">DTO com a senha atual e a nova senha desejada.</param>
+    /// <returns>Mensagem de sucesso na alteração da senha.</returns>
     [HttpPost("change-password")]
     [Authorize]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)

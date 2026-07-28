@@ -94,11 +94,11 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
-// Automatic Migration Execution & Initial Admin Seeding on Startup
+// Automatic Database Schema Creation & Initial Admin Seeding on Startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WorkstationDbContext>();
-    db.Database.Migrate();
+    await db.Database.EnsureCreatedAsync();
 
     // Seed initial admin user if none exists (Zero hardcoded credentials)
     await DbSeeder.SeedInitialAdminAsync(db, builder.Configuration);
