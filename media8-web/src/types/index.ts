@@ -28,7 +28,8 @@ export interface CreateUserRequest {
 
 export interface WorkstationAsset {
   AssetId: string;
-  OrderId: string;
+  ProjectId: string;
+  OrderId?: string;
   Title: string;
   OriginalFileName: string;
   ExternalSourceUrl: string;
@@ -63,23 +64,44 @@ export interface TimecodeMarker {
   CreatedByUser?: User;
 }
 
-export interface OrderEditor {
-  OrderEditorId: string;
-  OrderId: string;
+export interface ProjectEditor {
+  ProjectEditorId: string;
+  ProjectId: string;
   UserId: string;
   AssignedAt: string;
   User?: User;
 }
 
-export interface Order {
-  OrderId: string;
+export interface Project {
+  ProjectId: string;
   Title: string;
   BriefingText?: string;
+  ExternalOrderReference?: string;
   Status: 'Draft' | 'InProduction' | 'InReview' | 'Completed' | 'Cancelled';
   CreatedByUserId: string;
   CreatedAt: string;
   UpdatedAt: string;
   CreatedByUser?: User;
-  AssignedEditors?: OrderEditor[];
+  AssignedEditors?: ProjectEditor[];
   Assets?: WorkstationAsset[];
+}
+
+// Backwards compatibility alias
+export type Order = Project;
+export type OrderEditor = ProjectEditor;
+
+export interface MediaProcessingJob {
+  JobId: string;
+  AssetId: string;
+  JobType: 'IngestDownload' | 'GenerateHighFidelity' | 'GenerateProxy' | 'ExtractWaveform' | 'CutSubClip';
+  Status: 'Pending' | 'Processing' | 'Completed' | 'Failed';
+  Priority: number;
+  Attempts: number;
+  MaxAttempts: number;
+  ErrorMessage?: string;
+  LockedByWorkerId?: string;
+  LockedAt?: string;
+  CreatedAt: string;
+  UpdatedAt: string;
+  Asset?: WorkstationAsset;
 }

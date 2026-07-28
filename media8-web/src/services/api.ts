@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Order, WorkstationAsset, TimecodeMarker, AuthResponse, LoginRequest, User, CreateUserRequest } from '../types';
+import type { Project, WorkstationAsset, TimecodeMarker, AuthResponse, LoginRequest, User, CreateUserRequest, MediaProcessingJob } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -65,23 +65,30 @@ export const UserService = {
   },
 };
 
-export const OrderService = {
-  getOrders: async (userId?: string, role?: string): Promise<Order[]> => {
-    const response = await api.get<Order[]>('/Orders', {
+export const ProjectService = {
+  getProjects: async (userId?: string, role?: string): Promise<Project[]> => {
+    const response = await api.get<Project[]>('/Orders', {
       params: { userId, role },
     });
     return response.data;
   },
 
-  getOrderById: async (id: string): Promise<Order> => {
-    const response = await api.get<Order>(`/Orders/${id}`);
+  getProjectById: async (id: string): Promise<Project> => {
+    const response = await api.get<Project>(`/Orders/${id}`);
     return response.data;
   },
 
-  createOrder: async (order: Partial<Order>): Promise<Order> => {
-    const response = await api.post<Order>('/Orders', order);
+  createProject: async (project: Partial<Project>): Promise<Project> => {
+    const response = await api.post<Project>('/Orders', project);
     return response.data;
   },
+};
+
+// Compatibility Alias for legacy code
+export const OrderService = {
+  getOrders: ProjectService.getProjects,
+  getOrderById: ProjectService.getProjectById,
+  createOrder: ProjectService.createProject,
 };
 
 export const AssetService = {
@@ -119,5 +126,17 @@ export const TimecodeService = {
 
   deleteMarker: async (id: string): Promise<void> => {
     await api.delete(`/TimecodeMarkers/${id}`);
+  },
+};
+
+export const JobService = {
+  getJobs: async (): Promise<MediaProcessingJob[]> => {
+    // Endpoint mock fallback when offline
+    try {
+      const response = await api.get<MediaProcessingJob[]>('/Jobs');
+      return response.data;
+    } catch {
+      return [];
+    }
   },
 };
