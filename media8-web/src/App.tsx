@@ -4,11 +4,17 @@ import { TimecodePlayer } from './components/TimecodePlayer';
 import { WaveformCanvas } from './components/WaveformCanvas';
 import { SubClipEditor } from './components/SubClipEditor';
 import { IngestModal } from './components/IngestModal';
-import type { Order, WorkstationAsset, TimecodeMarker } from './types';
-import { OrderService, TimecodeService } from './services/api';
+import { LoginScreen } from './components/LoginScreen';
+import type { Order, WorkstationAsset, TimecodeMarker, AuthResponse } from './types';
+import { OrderService, TimecodeService, AuthService } from './services/api';
 import { Folder, Film, FileText, PlusCircle, AlertCircle } from 'lucide-react';
 
 export function App() {
+  const [currentUser, setCurrentUser] = useState<AuthResponse | null>(() => {
+    const saved = localStorage.getItem('media8_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<WorkstationAsset | undefined>(undefined);
@@ -21,11 +27,24 @@ export function App() {
   const [inFrame, setInFrame] = useState(0);
   const [outFrame, setOutFrame] = useState(0);
 
-  // Fetch real orders from database (ZERO MOCK DATA)
+  // Handle unauthorized events (401 response from backend)
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setCurrentUser(null);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
+  }, []);
+
+  // Fetch real orders from database when logged in
   const loadOrders = async () => {
+    if (!currentUser) return;
     try {
       setError(null);
-      const data = await OrderService.getOrders();
+      const data = await OrderService.getOrders(currentUser.UserId, currentUser.Role);
       setOrders(data);
       if (data.length > 0 && !selectedOrder) {
         setSelectedOrder(data[0]);
@@ -34,13 +53,15 @@ export function App() {
         }
       }
     } catch (err) {
-      setError('Não foi possível se conectar à API .NET. Verifique se o backend PostgreSQL/API está em execução.');
+      setError('Não foi possível carregar os projetos da API. Verifique a conexão e suas credenciais.');
     }
   };
 
   useEffect(() => {
-    loadOrders();
-  }, []);
+    if (currentUser) {
+      loadOrders();
+    }
+  }, [currentUser]);
 
   // Fetch markers for selected asset
   const loadMarkers = async (assetId: string) => {
@@ -61,6 +82,7 @@ export function App() {
   }, [selectedAsset]);
 
   const handleCreateNewOrder = async () => {
+    if (!currentUser) return;
     const title = prompt('Digite o título do novo Pedido / Order:');
     if (!title) return;
 
@@ -68,7 +90,7 @@ export function App() {
       const newOrder = await OrderService.createOrder({
         Title: title,
         BriefingText: 'Briefing inicial do projeto. Descreva aqui os cortes e especificações do cliente.',
-        CreatedByUserId: '00000000-0000-0000-0000-000000000001', // Admin ID
+        CreatedByUserId: currentUser.UserId,
         Status: 'InProduction',
       });
       await loadOrders();
@@ -78,10 +100,25 @@ export function App() {
     }
   };
 
+  const handleLogout = () => {
+    AuthService.logout();
+    setCurrentUser(null);
+    setOrders([]);
+    setSelectedOrder(null);
+    setSelectedAsset(undefined);
+  };
+
+  // UNAUTHENTICATED USER LOCK — Renders ONLY the Login Screen (Zero Anonymous Access)
+  if (!currentUser) {
+    return <LoginScreen onLoginSuccess={setCurrentUser} />;
+  }
+
   return (
     <div className="min-h-screen bg-dark-bg text-cream-soft flex flex-col font-sans">
       <Header
+        currentUser={currentUser}
         onOpenIngestModal={() => setIsIngestModalOpen(true)}
+        onLogout={handleLogout}
         selectedOrderTitle={selectedOrder?.Title}
       />
 
@@ -93,7 +130,7 @@ export function App() {
           </div>
           <button
             onClick={loadOrders}
-            className="px-3 py-1 bg-wine-vibrant hover:bg-wine-warm text-cream-soft font-semibold rounded-lg text-xs"
+            className="px-3 py-1 bg-wine-vibrant hover:bg-wine-warm text-cream-soft font-semibold rounded-lg text-xs cursor-pointer"
           >
             Tentar Novamente
           </button>
@@ -111,7 +148,7 @@ export function App() {
             <button
               onClick={handleCreateNewOrder}
               title="Nova Order"
-              className="p-1 hover:bg-wine-deep/40 rounded text-cream-soft/80 hover:text-cream-soft"
+              className="p-1 hover:bg-wine-deep/40 rounded text-cream-soft/80 hover:text-cream-soft cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
             </button>
@@ -124,7 +161,7 @@ export function App() {
                 <p className="text-xs text-cream-soft/50 mb-2">Nenhuma Order encontrada no banco PostgreSQL.</p>
                 <button
                   onClick={handleCreateNewOrder}
-                  className="bg-wine-deep hover:bg-wine-warm text-cream-soft text-xs font-semibold px-3 py-1.5 rounded-lg border border-wine-vibrant"
+                  className="bg-wine-deep hover:bg-wine-warm text-cream-soft text-xs font-semibold px-3 py-1.5 rounded-lg border border-wine-vibrant cursor-pointer"
                 >
                   + Criar Primeira Order
                 </button>
@@ -206,7 +243,7 @@ export function App() {
               {selectedOrder && (
                 <button
                   onClick={() => setIsIngestModalOpen(true)}
-                  className="text-[11px] text-wine-vibrant hover:underline font-semibold"
+                  className="text-[11px] text-wine-vibrant hover:underline font-semibold cursor-pointer"
                 >
                   + Ingest
                 </button>
