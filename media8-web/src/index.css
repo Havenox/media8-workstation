@@ -1,43 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Brand Colors (HSL) */
-    --wine: 0 94% 14%;       /* #400404 Deep Wine */
+    /* ===== BRAND COLORS (HSL) ===== */
+    /* Primary: Deep Wine #400404 */
+    --wine: 0 94% 14%;
     --wine-light: 0 70% 22%;
-    --wine-warm: 0 78% 21%;  /* #5C1212 */
-    --wine-vibrant: 0 85% 26%;/* #7B0A0A */
+    --wine-warm: 0 78% 21%;
+    --wine-vibrant: 0 85% 26%;
 
-    --cream: 48 100% 96%;    /* #FFFBED Cream Soft */
+    /* Secondary: Cream #FFFBED */
+    --cream: 48 100% 96%;
     --cream-dark: 40 30% 90%;
 
-    /* Gradients */
+    /* Accent gradients */
     --gradient-wine: linear-gradient(135deg, hsl(0 78% 21%) 0%, hsl(0 85% 26%) 100%);
-    --gradient-dark: linear-gradient(135deg, hsl(0 94% 14%) 0%, hsl(0 0% 5%) 100%);
+    --gradient-dark: linear-gradient(135deg, hsl(0 78% 21%) 0%, hsl(0 0% 0%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(0 94% 14%) 0%, hsl(0 78% 21%) 50%, hsl(0 85% 26%) 100%);
 
-    /* Dark Mode Defaults */
-    --background: 0 90% 4%;   /* #140101 Dark Wine Background */
-    --foreground: 48 100% 96%;/* #FFFBED */
+    /* ===== SEMANTIC TOKENS ===== */
+    --background: var(--cream);
+    --foreground: var(--wine);
 
-    --card: 0 80% 6%;         /* #1C0303 */
-    --card-foreground: 48 100% 96%;
+    --card: 0 0% 100%;
+    --card-foreground: var(--wine);
 
-    --popover: 0 80% 6%;
-    --popover-foreground: 48 100% 96%;
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--wine);
 
-    --primary: 0 94% 14%;     /* #400404 */
-    --primary-foreground: 48 100% 96%;
+    --primary: var(--wine);
+    --primary-foreground: var(--cream);
 
-    --secondary: 0 78% 21%;
-    --secondary-foreground: 48 100% 96%;
+    --secondary: var(--cream-dark);
+    --secondary-foreground: var(--wine);
 
-    --muted: 0 50% 10%;
-    --muted-foreground: 0 20% 65%;
+    --muted: 40 20% 94%;
+    --muted-foreground: 0 30% 35%;
 
-    --accent: 0 85% 26%;
-    --accent-foreground: 48 100% 96%;
+    --accent: var(--wine-light);
+    --accent-foreground: var(--cream);
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -51,83 +56,97 @@
     --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
 
-    --border: 0 80% 12%;      /* #3A0505 Ultra-fine border */
-    --input: 0 60% 14%;
-    --ring: 0 85% 26%;
+    --border: 0 30% 85%;
+    --input: 0 20% 90%;
+    --ring: var(--wine);
 
     --radius: 0.75rem;
+
+    /* Sidebar - Wine theme */
+    --sidebar-background: var(--wine);
+    --sidebar-foreground: var(--cream);
+    --sidebar-primary: var(--cream);
+    --sidebar-primary-foreground: var(--wine);
+    --sidebar-accent: var(--wine-light);
+    --sidebar-accent-foreground: var(--cream);
+    --sidebar-border: 0 50% 20%;
+    --sidebar-ring: var(--cream);
+
+    /* ===== SHADOWS ===== */
+    --shadow-sm: 0 1px 2px 0 hsl(var(--wine) / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(var(--wine) / 0.1), 0 2px 4px -2px hsl(var(--wine) / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(var(--wine) / 0.1), 0 4px 6px -4px hsl(var(--wine) / 0.1);
+    --shadow-xl: 0 20px 25px -5px hsl(var(--wine) / 0.1), 0 8px 10px -6px hsl(var(--wine) / 0.1);
+    --shadow-glow: 0 0 20px hsl(var(--wine-vibrant) / 0.3);
+
+    /* ===== TYPOGRAPHY ===== */
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-heading: 'Inter', system-ui, sans-serif;
+
+    /* ===== TRANSITIONS ===== */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    @apply border-border;
   }
 
   html {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    background-color: #140101;
-    color: #FFFBED;
-    min-height: 100vh;
-    overflow-x: hidden;
+    @apply bg-background text-foreground;
   }
 
-  /* Custom Wine Glassmorphism Panel */
-  .glass-panel {
-    background: rgba(28, 3, 3, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(123, 10, 10, 0.35);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    @apply font-semibold tracking-tight;
   }
 
-  /* Custom Scrollbar - Dark Wine Theme */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: rgba(20, 1, 1, 0.6);
+    background: hsl(var(--cream) / 0.2);
+    backdrop-filter: blur(4px);
+    border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #400404 0%, #7B0A0A 100%);
+    background: linear-gradient(180deg, hsl(var(--wine) / 0.6), hsl(var(--wine-vibrant) / 0.4));
     border-radius: 9999px;
-    border: 1px solid rgba(255, 251, 237, 0.1);
+    border: 1px solid hsl(var(--cream) / 0.1);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #7B0A0A;
+    background: linear-gradient(180deg, hsl(var(--wine) / 0.95), hsl(var(--wine-vibrant) / 0.75));
   }
 }
 
-/* Status Badges */
-.status-badge-pending {
-  background-color: rgba(69, 26, 3, 0.4);
-  color: #fcd34d;
-  border: 1px solid rgba(146, 64, 14, 0.5);
-}
+@layer components {
+  .gradient-wine {
+    background: var(--gradient-wine);
+  }
 
-.status-badge-processing {
-  background-color: rgba(23, 37, 84, 0.4);
-  color: #93c5fd;
-  border: 1px solid rgba(30, 64, 175, 0.5);
-}
+  .gradient-dark {
+    background: var(--gradient-dark);
+  }
 
-.status-badge-completed {
-  background-color: rgba(6, 78, 59, 0.4);
-  color: #6ee7b7;
-  border: 1px solid rgba(6, 95, 70, 0.5);
-}
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
 
-.status-badge-failed {
-  background-color: rgba(127, 29, 29, 0.4);
-  color: #fca5a5;
-  border: 1px solid rgba(153, 27, 27, 0.5);
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50;
+  }
 }
