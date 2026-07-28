@@ -129,23 +129,21 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WorkstationDbContext>();
     var databaseCreator = db.Database.GetService<IRelationalDatabaseCreator>();
-    
+
     try
     {
         if (!await databaseCreator.HasTablesAsync())
         {
             await databaseCreator.CreateTablesAsync();
         }
-        else
-        {
-            // Force table creation if specific tables don't exist yet
-            await databaseCreator.CreateTablesAsync();
-        }
     }
     catch
     {
-        // Tables already created or exists
+        // Ignore if base tables already exist
     }
+
+    // Ensure Projects and ProjectLinks tables exist in PostgreSQL
+    await DbSeeder.EnsureSchemaUpdatedAsync(db);
 
     // Seed initial admin user if none exists (Zero hardcoded credentials)
     await DbSeeder.SeedInitialAdminAsync(db, builder.Configuration);
