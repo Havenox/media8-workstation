@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Media8.Workstation.Domain.Entities;
 
 public class MediaProcessingJob
@@ -15,5 +17,6 @@ public class MediaProcessingJob
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [JsonIgnore]
     public WorkstationAsset Asset { get; set; } = null!;
 }

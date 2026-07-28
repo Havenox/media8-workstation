@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Media8.Workstation.Domain.Entities;
 
 public class TimecodeMarker
@@ -14,6 +16,7 @@ public class TimecodeMarker
     public Guid CreatedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [JsonIgnore]
     public WorkstationAsset Asset { get; set; } = null!;
     public User CreatedByUser { get; set; } = null!;
 }

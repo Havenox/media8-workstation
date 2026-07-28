@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Media8.Workstation.Api.Hubs;
 using Media8.Workstation.Infrastructure.Data;
 using Media8.Workstation.Infrastructure.Services;
@@ -10,11 +11,12 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Force PascalCase JSON Serializer Policy (Backend is LEI)
+// 1. Force PascalCase JSON Serializer Policy (Backend is LEI) and Ignore Circular Reference Cycles
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = null; // Keeps native C# PascalCase
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
 // 2. Add SignalR for Real-time Notifications

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Media8.Workstation.Domain.Entities;
 
 public class WorkstationAsset
@@ -21,6 +23,7 @@ public class WorkstationAsset
     public string Status { get; set; } = "Pending"; // "Pending", "Downloading", "Transcoding", "Ready", "Failed"
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [JsonIgnore]
     public Project Project { get; set; } = null!;
     public ICollection<TimecodeMarker> Markers { get; set; } = new List<TimecodeMarker>();
     public ICollection<MediaProcessingJob> Jobs { get; set; } = new List<MediaProcessingJob>();

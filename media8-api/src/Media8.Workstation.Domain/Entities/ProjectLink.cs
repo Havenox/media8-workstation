@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Media8.Workstation.Domain.Entities;
 
 /// <summary>
@@ -11,5 +13,6 @@ public class ProjectLink
     public string LinkType { get; set; } = "Folder"; // "Folder", "Video", "Audio", "Image", "PDF", "Other"
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [JsonIgnore]
     public Project Project { get; set; } = null!;
 }
