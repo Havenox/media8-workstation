@@ -71,7 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <div>
                 <BrandLogo variant="cream" size="sm" />
-                <p className="text-xs text-[#FFFBED]/60 font-medium mt-0.5">Workstation PAM</p>
+                <p className="text-xs text-[#FFFBED] font-bold mt-0.5">Workstation PAM</p>
               </div>
             </motion.div>
           )}
@@ -103,8 +103,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 collapsed ? 'justify-center px-2' : 'justify-start px-3.5'
               } ${
                 isActive
-                  ? 'bg-[#FFFBED] text-[#400404] font-semibold shadow-md'
-                  : 'text-[#FFFBED]/80 hover:bg-[#5C1212] hover:text-[#FFFBED]'
+                  ? 'bg-[#FFFBED] text-[#400404] font-bold shadow-md'
+                  : 'text-[#FFFBED] font-semibold hover:bg-[#5C1212]'
               }`}
             >
               <Icon className="h-5 w-5 shrink-0" />
@@ -127,7 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-4 border-t border-[#5C1212]">
         <button
           onClick={() => onTabChange('settings')}
-          className={`w-full flex items-center gap-3 py-2 text-xs text-[#FFFBED]/60 hover:text-[#FFFBED] transition-colors cursor-pointer ${
+          className={`w-full flex items-center gap-3 py-2 text-xs text-[#FFFBED] font-semibold hover:bg-[#5C1212] rounded-lg transition-colors cursor-pointer ${
             collapsed ? 'justify-center px-2' : 'justify-start px-2'
           }`}
         >
@@ -139,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-[10px] text-[#FFFBED]/40 text-center mt-2 font-mono"
+            className="text-xs text-[#FFFBED] text-center mt-2 font-mono font-bold"
           >
             v1.0.0 (Workstation PAM)
           </motion.p>

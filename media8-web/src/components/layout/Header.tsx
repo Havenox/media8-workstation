@@ -10,9 +10,9 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
   return (
-    <header className="sticky top-0 z-40 bg-[#FFFBED]/95 backdrop-blur-sm border-b border-[#400404]/15 px-6 py-3.5 flex items-center justify-between shadow-sm">
+    <header className="sticky top-0 z-40 bg-[#FFFBED]/95 backdrop-blur-sm border-b border-[#400404]/20 px-6 py-3.5 flex items-center justify-between shadow-sm">
       <div>
-        <p className="text-[11px] uppercase font-mono tracking-wider text-[#5C1212]/60">
+        <p className="text-xs uppercase font-mono font-bold tracking-wider text-[#5C1212]">
           Painel da Produtora
         </p>
         <h1 className="text-lg font-bold text-[#400404]">Media 8 | Workstation</h1>
@@ -20,13 +20,13 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
 
       <div className="flex items-center gap-4">
         {/* User Profile Pill */}
-        <div className="flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-lg border border-[#400404]/15 shadow-sm">
+        <div className="flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-lg border border-[#400404]/20 shadow-sm">
           <div className="w-8 h-8 rounded-full bg-[#400404] text-[#FFFBED] font-bold text-xs flex items-center justify-center">
             {currentUser.Name ? currentUser.Name.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="text-left hidden sm:block">
             <p className="text-xs font-bold text-[#400404] leading-tight">{currentUser.Name}</p>
-            <p className="text-[10px] text-[#5C1212]/70 font-mono">
+            <p className="text-xs text-[#5C1212] font-bold font-mono">
               {currentUser.Role === 'Admin' ? '👑 Admin' : '🎬 Editor'}
             </p>
           </div>
@@ -37,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
           onClick={onLogout}
           variant="outline"
           size="sm"
-          className="border-[#400404]/20 hover:bg-[#400404] hover:text-[#FFFBED] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+          className="border-[#400404]/30 hover:bg-[#400404] hover:text-[#FFFBED] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer text-[#400404]"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Sair</span>

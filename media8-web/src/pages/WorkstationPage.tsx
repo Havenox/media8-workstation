@@ -62,11 +62,11 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
       {/* Top Selector Bar */}
       <div className="bg-white p-4 rounded-xl border border-[#400404]/15 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#400404] text-[#FFFBED] flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-lg bg-[#400404] text-[#FFFBED] flex items-center justify-center font-bold shadow-sm">
             <Film className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-mono uppercase text-[#5C1212]/60">Estação PAM de Pré-edição</p>
+            <p className="text-xs font-mono font-bold uppercase text-[#5C1212]">Estação PAM de Pré-edição</p>
             <h2 className="text-lg font-bold text-[#400404]">
               {activeProject ? activeProject.Title : 'Nenhum Projeto Selecionado'}
             </h2>
@@ -81,7 +81,7 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
               const proj = projects.find((p) => p.ProjectId === e.target.value);
               if (proj) onSelectProject(proj);
             }}
-            className="p-2 text-xs bg-[#FFFBED] border border-[#400404]/20 rounded-lg text-[#400404] font-semibold focus:outline-none focus:ring-2 focus:ring-[#400404]/30 min-w-[220px]"
+            className="p-2 text-xs bg-[#FFFBED] border border-[#400404]/30 rounded-lg text-[#400404] font-bold focus:outline-none focus:ring-2 focus:ring-[#400404] min-w-[220px]"
           >
             <option value="" disabled>Selecione um Projeto...</option>
             {projects.map((p) => (
@@ -111,14 +111,14 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
           <div className="bg-white p-4 rounded-xl border border-[#400404]/15 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-[#400404]/10 pb-2">
               <h3 className="text-xs font-bold text-[#400404] uppercase">Mídias do Projeto</h3>
-              <span className="text-[10px] text-[#5C1212]/60 font-mono">
+              <span className="text-xs text-[#400404] font-mono font-bold">
                 {activeProject?.Assets?.length || 0} itens
               </span>
             </div>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {!activeProject?.Assets || activeProject.Assets.length === 0 ? (
-                <div className="text-center py-6 text-[#5C1212]/50 text-xs italic">
+                <div className="text-center py-6 text-[#400404] font-semibold text-xs italic bg-[#FFFBED] p-3 rounded-lg border border-[#400404]/15">
                   Nenhuma mídia cadastrada neste projeto. Clique em "+ Ingestão de Mídia" para enviar.
                 </div>
               ) : (
@@ -126,14 +126,14 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
                   <div
                     key={asset.AssetId}
                     onClick={() => setSelectedAsset(asset)}
-                    className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-all ${
+                    className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
                       selectedAsset?.AssetId === asset.AssetId
-                        ? 'bg-[#400404] text-[#FFFBED] border-[#400404] shadow-sm'
-                        : 'bg-[#FFFBED] border-[#400404]/15 text-[#400404] hover:bg-white'
+                        ? 'bg-[#400404] text-[#FFFBED] border-[#400404] shadow-md font-bold'
+                        : 'bg-[#FFFBED] border-[#400404]/20 text-[#400404] hover:bg-white'
                     }`}
                   >
-                    <div className="font-semibold truncate">{asset.Title}</div>
-                    <div className="text-[10px] opacity-70 flex justify-between mt-1 font-mono">
+                    <div className="font-bold truncate">{asset.Title}</div>
+                    <div className="text-[11px] font-mono font-semibold flex justify-between mt-1.5 opacity-90">
                       <span className="truncate max-w-[110px]">{asset.OriginalFileName}</span>
                       <span className="uppercase font-bold">{asset.Status}</span>
                     </div>
@@ -150,7 +150,7 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
                 <FileCode className="w-4 h-4 text-[#400404]" />
                 <h4 className="text-xs font-bold text-[#400404] uppercase">Briefing do Projeto</h4>
               </div>
-              <p className="text-xs text-[#5C1212]/80 bg-[#FFFBED] p-3 rounded-lg border border-[#400404]/15 leading-relaxed max-h-44 overflow-y-auto">
+              <p className="text-xs text-[#400404] font-medium bg-[#FFFBED] p-3.5 rounded-lg border border-[#400404]/20 leading-relaxed max-h-44 overflow-y-auto">
                 {activeProject.BriefingText || 'Nenhum briefing especificado.'}
               </p>
             </div>
