@@ -102,6 +102,7 @@ export function AppContent() {
             Name: parsed.Name,
             Email: parsed.Email,
             Role: parsed.Role || 'Admin',
+            AvatarUrl: parsed.AvatarUrl,
             CreatedAt: new Date().toISOString(),
           });
         } catch {
@@ -281,6 +282,10 @@ export function AppContent() {
                   projects={projects}
                   currentUser={currentUser}
                   onRefreshUsers={loadUsers}
+                  onUpdateCurrentUser={(updated) => {
+                    setCurrentUser(updated);
+                    localStorage.setItem('media8_user', JSON.stringify(updated));
+                  }}
                 />
               </RequireAuth>
             )

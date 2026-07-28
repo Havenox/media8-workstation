@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ZoomIn, ZoomOut, Check, X, Crop } from 'lucide-react';
+import { ZoomIn, ZoomOut, Check, RotateCcw, Crop } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
 import { Button } from '../ui/button';
 
@@ -16,7 +16,8 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
   onClose,
   onCropComplete,
 }) => {
-  const [zoom, setZoom] = useState<number>(1);
+  // Zoom slider from -100 (0.5x zoom out) to +100 (2.5x zoom in), centered at 0 (1.0x scale)
+  const [zoomVal, setZoomVal] = useState<number>(0);
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -24,11 +25,18 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
+  // Compute actual scale factor from slider (-100 to 100)
+  const getZoomFactor = (val: number): number => {
+    if (val >= 0) {
+      return 1 + (val / 100) * 1.5; // 0..100 maps to 1.0x .. 2.5x
+    }
+    return 1 + (val / 100) * 0.5; // -100..0 maps to 0.5x .. 1.0x
+  };
+
   // Reset zoom & pan when a new image is loaded
   useEffect(() => {
     if (imageSrc) {
-      setZoom(1);
-      setOffset({ x: 0, y: 0 });
+      handleResetPosition();
       const img = new Image();
       img.src = imageSrc;
       img.onload = () => {
@@ -40,7 +48,12 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
 
   useEffect(() => {
     drawCropPreview();
-  }, [zoom, offset]);
+  }, [zoomVal, offset]);
+
+  const handleResetPosition = () => {
+    setZoomVal(0);
+    setOffset({ x: 0, y: 0 });
+  };
 
   const drawCropPreview = () => {
     const canvas = canvasRef.current;
@@ -56,14 +69,16 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
 
     ctx.clearRect(0, 0, size, size);
 
+    const zoomFactor = getZoomFactor(zoomVal);
+
     // Draw background image scaled by zoom and offset
     const aspect = img.width / img.height;
-    let drawW = size * zoom;
-    let drawH = (size / aspect) * zoom;
+    let drawW = size * zoomFactor;
+    let drawH = (size / aspect) * zoomFactor;
 
     if (aspect < 1) {
-      drawH = size * zoom;
-      drawW = size * aspect * zoom;
+      drawH = size * zoomFactor;
+      drawW = size * aspect * zoomFactor;
     }
 
     const drawX = (size - drawW) / 2 + offset.x;
@@ -83,7 +98,7 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
     ctx.lineTo((size / 3) * 2, size);
     // Horizontal grid lines
     ctx.moveTo(0, size / 3);
-    ctx.lineTo(size, size/ 3);
+    ctx.lineTo(size, size / 3);
     ctx.moveTo(0, (size / 3) * 2);
     ctx.lineTo(size, (size / 3) * 2);
     ctx.stroke();
@@ -124,14 +139,15 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
     const ctx = exportCanvas.getContext('2d');
     if (!ctx) return;
 
+    const zoomFactor = getZoomFactor(zoomVal);
     const scale = 200 / 260;
     const aspect = img.width / img.height;
-    let drawW = 260 * zoom * scale;
-    let drawH = (260 / aspect) * zoom * scale;
+    let drawW = 260 * zoomFactor * scale;
+    let drawH = (260 / aspect) * zoomFactor * scale;
 
     if (aspect < 1) {
-      drawH = 260 * zoom * scale;
-      drawW = 260 * aspect * zoom * scale;
+      drawH = 260 * zoomFactor * scale;
+      drawW = 260 * aspect * zoomFactor * scale;
     }
 
     const drawX = (200 - drawW) / 2 + offset.x * scale;
@@ -178,19 +194,31 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
             />
           </div>
 
-          {/* Zoom Slider Controls */}
-          <div className="flex items-center gap-3 w-full px-2">
+          {/* Zoom Slider & Reset Controls */}
+          <div className="flex items-center gap-2.5 w-full px-1">
             <ZoomOut className="w-4 h-4 text-[#400404]/70 shrink-0" />
             <input
               type="range"
-              min="1"
-              max="3"
-              step="0.05"
-              value={zoom}
-              onChange={(e) => setZoom(parseFloat(e.target.value))}
+              min="-100"
+              max="100"
+              step="1"
+              value={zoomVal}
+              onChange={(e) => setZoomVal(parseInt(e.target.value, 10))}
               className="w-full accent-[#400404] cursor-pointer"
             />
             <ZoomIn className="w-4 h-4 text-[#400404]/70 shrink-0" />
+
+            {/* Reset Position & Zoom Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetPosition}
+              title="Resetar Posição e Zoom"
+              className="p-1.5 h-8 border-[#400404]/20 hover:bg-[#400404] hover:text-[#FFFBED] text-[#400404] rounded-lg transition-colors cursor-pointer shrink-0 ml-1"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { UserPlus, Crown, Video, Loader2, Search, Edit2, Key, Upload, Trash2, Camera } from 'lucide-react';
+import { UserPlus, Crown, Video, Loader2, Search, Edit2, Upload, Camera, Pencil, Check } from 'lucide-react';
 import type { User, Project, UserStats } from '../types';
 import { UserService } from '../services/api';
 import { Button } from '../components/ui/button';
@@ -14,12 +14,14 @@ interface UsersPageProps {
   projects: Project[];
   currentUser: User;
   onRefreshUsers?: () => void;
+  onUpdateCurrentUser?: (user: User) => void;
 }
 
 export const UsersPage: React.FC<UsersPageProps> = ({
   projects,
   currentUser,
   onRefreshUsers,
+  onUpdateCurrentUser,
 }) => {
   // State for Users List & Pagination
   const [users, setUsers] = useState<User[]>([]);
@@ -47,6 +49,10 @@ export const UsersPage: React.FC<UsersPageProps> = ({
   const [rawImageSrc, setRawImageSrc] = useState<string>('');
   const [croppedAvatarBlob, setCroppedAvatarBlob] = useState<Blob | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string>('');
+
+  // Subtle External URL Input State (with pencil toggle)
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string>('');
+  const [isUrlEditingAllowed, setIsUrlEditingAllowed] = useState<boolean>(false);
 
   // Form State (Create/Edit)
   const [name, setName] = useState('');
@@ -141,7 +147,6 @@ export const UsersPage: React.FC<UsersPageProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate Image Type
     if (!file.type.startsWith('image/')) {
       alert('Por favor, selecione um arquivo de imagem válido (JPG, PNG, WebP ou GIF).');
       return;
@@ -160,6 +165,8 @@ export const UsersPage: React.FC<UsersPageProps> = ({
   const handleCropComplete = (croppedBlob: Blob, previewUrl: string) => {
     setCroppedAvatarBlob(croppedBlob);
     setAvatarPreviewUrl(previewUrl);
+    // Overrides custom URL when a new local file is cropped
+    setCustomAvatarUrl('');
   };
 
   // Handlers for Create User
@@ -170,6 +177,8 @@ export const UsersPage: React.FC<UsersPageProps> = ({
     setRole('Editor');
     setCroppedAvatarBlob(null);
     setAvatarPreviewUrl('');
+    setCustomAvatarUrl('');
+    setIsUrlEditingAllowed(false);
     setIsCreateModalOpen(true);
   };
 
@@ -184,11 +193,17 @@ export const UsersPage: React.FC<UsersPageProps> = ({
         Email: email.trim(),
         Password: password,
         Role: role,
+        AvatarUrl: customAvatarUrl.trim() ? customAvatarUrl.trim() : undefined,
       });
 
-      // Upload avatar if cropped image exists
+      // Upload avatar file if cropped local image exists
       if (croppedAvatarBlob && created.UserId) {
-        await UserService.uploadAvatar(created.UserId, croppedAvatarBlob);
+        const uploaded = await UserService.uploadAvatar(created.UserId, croppedAvatarBlob);
+        if (currentUser.UserId === created.UserId && onUpdateCurrentUser) {
+          onUpdateCurrentUser(uploaded);
+        }
+      } else if (currentUser.UserId === created.UserId && onUpdateCurrentUser) {
+        onUpdateCurrentUser(created);
       }
 
       setIsCreateModalOpen(false);
@@ -208,9 +223,11 @@ export const UsersPage: React.FC<UsersPageProps> = ({
     setName(userToEdit.Name);
     setEmail(userToEdit.Email);
     setRole(userToEdit.Role as UserRoleOption);
-    setPassword(''); // Opcional na edição
+    setPassword('');
     setCroppedAvatarBlob(null);
     setAvatarPreviewUrl(userToEdit.AvatarUrl || '');
+    setCustomAvatarUrl(userToEdit.AvatarUrl || '');
+    setIsUrlEditingAllowed(false);
     setIsEditModalOpen(true);
   };
 
@@ -219,7 +236,6 @@ export const UsersPage: React.FC<UsersPageProps> = ({
     e.preventDefault();
     if (!editingUser || !name.trim() || !email.trim()) return;
 
-    // If password is present, open 2-step confirmation modal
     if (password.trim().length > 0) {
       setIsPasswordConfirmOpen(true);
     } else {
@@ -232,16 +248,29 @@ export const UsersPage: React.FC<UsersPageProps> = ({
 
     try {
       setIsSubmitting(true);
-      await UserService.updateUser(editingUser.UserId, {
+
+      // Check if custom URL was set vs cropped blob
+      const avatarUrlToSave = customAvatarUrl.trim() !== (editingUser.AvatarUrl || '')
+        ? customAvatarUrl.trim()
+        : undefined;
+
+      const updated = await UserService.updateUser(editingUser.UserId, {
         Name: name.trim(),
         Email: email.trim(),
         Role: role,
         Password: password.trim() ? password.trim() : undefined,
+        AvatarUrl: avatarUrlToSave,
       });
 
       // Upload new avatar photo if a new cropped image exists
+      let finalUser = updated;
       if (croppedAvatarBlob) {
-        await UserService.uploadAvatar(editingUser.UserId, croppedAvatarBlob);
+        finalUser = await UserService.uploadAvatar(editingUser.UserId, croppedAvatarBlob);
+      }
+
+      // Refresh top right header if logged-in user edited their own profile
+      if (currentUser.UserId === editingUser.UserId && onUpdateCurrentUser) {
+        onUpdateCurrentUser(finalUser);
       }
 
       setIsPasswordConfirmOpen(false);
@@ -469,7 +498,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
 
           <form onSubmit={handleCreateUser} className="space-y-4 py-2">
             {/* Avatar Selector Uploader Box */}
-            <div className="flex flex-col items-center justify-center gap-2 pb-2">
+            <div className="flex flex-col items-center justify-center gap-2 pb-1">
               <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                 <div className="w-20 h-20 rounded-2xl bg-[#400404] text-[#FFFBED] flex items-center justify-center overflow-hidden border-2 border-[#400404] shadow-md transition-transform group-hover:scale-105">
                   {avatarPreviewUrl ? (
@@ -483,6 +512,40 @@ export const UsersPage: React.FC<UsersPageProps> = ({
                 </div>
               </div>
               <p className="text-[11px] text-[#5C1212]/80 font-medium">Clique para escolher foto de perfil</p>
+
+              {/* Subtle External URL Input Box with Internal Pencil Toggle */}
+              <div className="w-full max-w-xs mt-1">
+                <div
+                  className={`flex items-center justify-between rounded-xl px-3 py-1.5 text-[11px] font-mono transition-all border ${
+                    isUrlEditingAllowed
+                      ? 'bg-white text-[#400404] border-[#400404]/40 ring-1 ring-[#400404]/30 shadow-xs'
+                      : 'bg-[#400404]/5 text-[#5C1212]/70 border-[#400404]/15 opacity-75'
+                  }`}
+                >
+                  <input
+                    type="url"
+                    disabled={!isUrlEditingAllowed}
+                    placeholder="https://... (URL de imagem externa / CDN)"
+                    value={customAvatarUrl}
+                    onChange={(e) => {
+                      setCustomAvatarUrl(e.target.value);
+                      if (e.target.value.trim()) {
+                        setAvatarPreviewUrl(e.target.value.trim());
+                        setCroppedAvatarBlob(null);
+                      }
+                    }}
+                    className="w-full bg-transparent border-none outline-none text-[11px] font-mono text-[#400404] placeholder:text-[#5C1212]/60 disabled:cursor-not-allowed"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsUrlEditingAllowed(!isUrlEditingAllowed)}
+                    title={isUrlEditingAllowed ? 'Travar edição de URL' : 'Editar link externo de imagem'}
+                    className="p-1 text-[#400404]/80 hover:text-[#400404] rounded-lg transition-colors cursor-pointer shrink-0 ml-1 hover:bg-[#400404]/10"
+                  >
+                    {isUrlEditingAllowed ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Pencil className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -566,7 +629,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
 
           <form onSubmit={handleFormSubmitAttempt} className="space-y-4 py-2">
             {/* Avatar Selector Uploader Box */}
-            <div className="flex flex-col items-center justify-center gap-2 pb-2">
+            <div className="flex flex-col items-center justify-center gap-2 pb-1">
               <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                 <div className="w-20 h-20 rounded-2xl bg-[#400404] text-[#FFFBED] flex items-center justify-center overflow-hidden border-2 border-[#400404] shadow-md transition-transform group-hover:scale-105">
                   {avatarPreviewUrl ? (
@@ -580,6 +643,40 @@ export const UsersPage: React.FC<UsersPageProps> = ({
                 </div>
               </div>
               <p className="text-[11px] text-[#5C1212]/80 font-medium">Clique para alterar a foto de perfil</p>
+
+              {/* Subtle External URL Input Box with Internal Pencil Toggle */}
+              <div className="w-full max-w-xs mt-1">
+                <div
+                  className={`flex items-center justify-between rounded-xl px-3 py-1.5 text-[11px] font-mono transition-all border ${
+                    isUrlEditingAllowed
+                      ? 'bg-white text-[#400404] border-[#400404]/40 ring-1 ring-[#400404]/30 shadow-xs'
+                      : 'bg-[#400404]/5 text-[#5C1212]/70 border-[#400404]/15 opacity-75'
+                  }`}
+                >
+                  <input
+                    type="url"
+                    disabled={!isUrlEditingAllowed}
+                    placeholder="https://... (URL de imagem externa / CDN)"
+                    value={customAvatarUrl}
+                    onChange={(e) => {
+                      setCustomAvatarUrl(e.target.value);
+                      if (e.target.value.trim()) {
+                        setAvatarPreviewUrl(e.target.value.trim());
+                        setCroppedAvatarBlob(null);
+                      }
+                    }}
+                    className="w-full bg-transparent border-none outline-none text-[11px] font-mono text-[#400404] placeholder:text-[#5C1212]/60 disabled:cursor-not-allowed"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsUrlEditingAllowed(!isUrlEditingAllowed)}
+                    title={isUrlEditingAllowed ? 'Travar edição de URL' : 'Editar link externo de imagem'}
+                    className="p-1 text-[#400404]/80 hover:text-[#400404] rounded-lg transition-colors cursor-pointer shrink-0 ml-1 hover:bg-[#400404]/10"
+                  >
+                    {isUrlEditingAllowed ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Pencil className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1.5">
