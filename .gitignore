@@ -20,7 +20,7 @@ postgres_data/
 minio_data/
 /minio_data/
 
-# Formatos de Vídeo Bruto (RAW) e Broadcast
+# Formatos de Vídeo Bruto (RAW) e Broadcast (Mídias pesadas)
 *.mov
 *.mxf
 *.prores
@@ -31,7 +31,6 @@ minio_data/
 *.nef
 *.dng
 *.m2ts
-*.ts
 *.mkv
 *.avi
 *.wmv
