@@ -286,8 +286,9 @@ export function AppContent() {
             )
           }
         />
-        <Route path="/config" element={currentUser && <SettingsPage currentUser={currentUser} />} />
-        <Route path="/storage" element={<Navigate to="/config" replace />} />
+        <Route path="/settings" element={currentUser && <SettingsPage currentUser={currentUser} />} />
+        <Route path="/config" element={<Navigate to="/settings" replace />} />
+        <Route path="/storage" element={<Navigate to="/settings" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
