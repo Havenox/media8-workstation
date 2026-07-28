@@ -1,15 +1,17 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 2.6.0  
+> *Versão:* 2.7.0  
 > *Status:* Ativo  
 
 ---
 
-## 1. Agnosticism de Ambiente & Banco de Dados Externo
+## 1. Agnosticism de Ambiente, Armazenamento Centralizado (`media8-storage`) & Banco de Dados Externo
 
-O **Media 8 | Workstation** segue a política de **Zero-Hardcode**. O projeto **não sobe nem gerencia um container de banco de dados próprio no seu `docker-compose.yml`**. O banco de dados PostgreSQL é um recurso externo/centralizado da infraestrutura (acessível via `DB_HOST`, ex: `192.168.18.110`).
-
+O **Media 8 | Workstation** segue a política de **Zero-Hardcode** e **Centralização de Mídias Compartilhadas**:
+- **Pasta de Armazenamento na Raiz (`media8-storage/`)**: O repositório contém a pasta dedicada `media8-storage/` com as subpastas `avatars/`, `high-fidelity/`, `proxies/` e `waveforms/`.
+- **Bind Mount Docker**: Todos os containers que lidam com mídia (`api`, `worker-ingestion`, `worker-transcoder`) mapeiam o bind mount `./media8-storage:/storage`.
+- **Servimento via API & Nginx Proxy**: A API serve o diretório via `app.UseStaticFiles()` e `PhysicalFileProvider` na rota `/storage/*`. O Nginx (`web` container) faz o proxy reverso de `location /storage/` para `http://api:5000/storage/`.
 - **Conexão Externa:** Todas as credenciais de conexão são injetadas via variáveis de ambiente no arquivo `.env` na raiz do repositório.
 - **Frontend Vite SPA:** URL base da API REST configurável via `VITE_API_URL` (padrão: `http://localhost:5000/api/v1`).
 
