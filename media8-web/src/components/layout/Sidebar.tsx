@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -18,39 +19,41 @@ import type { User } from '../../types';
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
-  activeTab: string;
-  onTabChange: (tab: string) => void;
   currentUser: User;
 }
 
 interface NavItem {
   id: string;
+  path: string;
   icon: React.ElementType;
   label: string;
   roles?: string[];
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { id: 'projects', icon: FolderKanban, label: 'Projetos' },
-  { id: 'workstation', icon: Film, label: 'Workstation PAM' },
-  { id: 'jobs', icon: Activity, label: 'Esteira de Ingestão' },
-  { id: 'users', icon: Users, label: 'Usuários & Atribuições', roles: ['Admin'] },
-  { id: 'settings', icon: Settings, label: 'Configurações & Storage' },
+  { id: 'dashboard', path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { id: 'projects', path: '/projects', icon: FolderKanban, label: 'Projetos' },
+  { id: 'workstation', path: '/workstation', icon: Film, label: 'Workstation PAM' },
+  { id: 'jobs', path: '/jobs', icon: Activity, label: 'Esteira de Ingestão' },
+  { id: 'users', path: '/users', icon: Users, label: 'Usuários & Atribuições', roles: ['Admin'] },
+  { id: 'storage', path: '/storage', icon: Settings, label: 'Configurações & Storage' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   onToggle,
-  activeTab,
-  onTabChange,
   currentUser,
 }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const userRole = currentUser.Role || 'Editor';
 
   const filteredNavItems = navItems.filter(
     (item) => !item.roles || item.roles.includes(userRole)
   );
+
+  const currentPath = location.pathname;
 
   return (
     <motion.aside
@@ -61,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       {/* Header */}
       <div className="p-4 flex items-center justify-between border-b border-[#5C1212]">
-        <div className="flex-1 cursor-pointer" onClick={() => onTabChange('dashboard')}>
+        <div className="flex-1 cursor-pointer" onClick={() => navigate('/dashboard')}>
           {!collapsed && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -71,7 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <div>
                 <BrandLogo variant="cream" size="sm" />
-                <p className="text-xs text-[#FFFBED] font-bold mt-0.5">Workstation PAM</p>
+                <p className="text-xs text-[#FFFBED] font-semibold mt-0.5">Workstation PAM</p>
               </div>
             </motion.div>
           )}
@@ -92,22 +95,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
         {filteredNavItems.map((item) => {
-          const isActive = activeTab === item.id;
+          const isActive =
+            item.path === '/dashboard'
+              ? currentPath === '/' || currentPath === '/dashboard'
+              : currentPath.startsWith(item.path);
+
           const Icon = item.icon;
 
           return (
             <button
               key={item.id}
-              onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center gap-3 py-3 rounded-lg text-sm transition-colors cursor-pointer ${
+              onClick={() => navigate(item.path)}
+              className={`w-full flex items-center gap-3 py-3 rounded-xl text-xs transition-colors cursor-pointer ${
                 collapsed ? 'justify-center px-2' : 'justify-start px-3.5'
               } ${
                 isActive
-                  ? 'bg-[#FFFBED] text-[#400404] font-bold shadow-md'
-                  : 'text-[#FFFBED] font-semibold hover:bg-[#5C1212]'
+                  ? 'bg-[#FFFBED] text-[#400404] font-semibold shadow-xs'
+                  : 'text-[#FFFBED] font-medium hover:bg-[#5C1212]'
               }`}
             >
-              <Icon className="h-5 w-5 shrink-0" />
+              <Icon className="h-4 w-4 shrink-0" />
               {!collapsed && (
                 <motion.span
                   initial={{ opacity: 0, width: 0 }}
@@ -126,8 +133,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Footer - Support */}
       <div className="p-4 border-t border-[#5C1212]">
         <button
-          onClick={() => onTabChange('settings')}
-          className={`w-full flex items-center gap-3 py-2 text-xs text-[#FFFBED] font-semibold hover:bg-[#5C1212] rounded-lg transition-colors cursor-pointer ${
+          onClick={() => navigate('/storage')}
+          className={`w-full flex items-center gap-3 py-2 text-xs text-[#FFFBED] font-medium hover:bg-[#5C1212] rounded-xl transition-colors cursor-pointer ${
             collapsed ? 'justify-center px-2' : 'justify-start px-2'
           }`}
         >
@@ -139,7 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-xs text-[#FFFBED] text-center mt-2 font-mono font-bold"
+            className="text-[11px] text-[#FFFBED]/80 text-center mt-2 font-mono font-normal"
           >
             v1.0.0 (Workstation PAM)
           </motion.p>

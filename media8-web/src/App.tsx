@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from 'react-router-dom';
 import type { User, Project } from './types';
 import { AuthService, ProjectService, UserService } from './services/api';
 import { LoginPage } from './components/auth/LoginPage';
-import { MainLayout } from './components/layout/MainLayout';
+import { AppLayout } from './components/layout/AppLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { WorkstationPage } from './pages/WorkstationPage';
@@ -11,14 +18,28 @@ import { UsersPage } from './pages/UsersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { Loader2 } from 'lucide-react';
 
-export function App() {
+interface ProtectedRouteProps {
+  user: User;
+  allowedRoles?: string[];
+  children: React.ReactNode;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ user, allowedRoles, children }) => {
+  if (allowedRoles && !allowedRoles.includes(user.Role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+};
+
+export function AppContent() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
+
+  const navigate = useNavigate();
 
   // Mock Fallback Projects for Demonstration
   const mockProjects: Project[] = [
@@ -99,13 +120,14 @@ export function App() {
       setCurrentUser(null);
       localStorage.removeItem('media8_token');
       localStorage.removeItem('media8_user');
+      navigate('/login');
     };
 
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
-  }, []);
+  }, [navigate]);
 
-  // Fetch Projects and Users for Dashboard & System Context
+  // Fetch Projects and Users for System Context
   const loadProjects = async () => {
     try {
       const res = await ProjectService.getProjects({ limit: 5 });
@@ -144,7 +166,7 @@ export function App() {
 
   const handleOpenWorkstationForProject = (project: Project) => {
     setActiveProject(project);
-    setActiveTab('workstation');
+    navigate(`/workstation/${project.ProjectId}`);
   };
 
   if (isInitializing) {
@@ -161,54 +183,88 @@ export function App() {
   }
 
   return (
-    <MainLayout
-      currentUser={currentUser}
-      onLogout={() => {
-        AuthService.logout();
-        setCurrentUser(null);
-      }}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-    >
-      {activeTab === 'dashboard' && (
-        <DashboardPage
-          projects={projects}
-          currentUser={currentUser}
-          onNavigateTab={setActiveTab}
-          onOpenWorkstation={handleOpenWorkstationForProject}
+    <Routes>
+      <Route
+        element={
+          <AppLayout
+            currentUser={currentUser}
+            onLogout={() => {
+              AuthService.logout();
+              setCurrentUser(null);
+            }}
+          />
+        }
+      >
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route
+          path="/dashboard"
+          element={
+            <DashboardPage
+              projects={projects}
+              currentUser={currentUser}
+              onNavigateTab={(tab) => navigate(`/${tab}`)}
+              onOpenWorkstation={handleOpenWorkstationForProject}
+            />
+          }
         />
-      )}
-
-      {activeTab === 'projects' && (
-        <ProjectsPage
-          currentUser={currentUser}
-          users={users}
-          onOpenWorkstation={handleOpenWorkstationForProject}
+        <Route
+          path="/projects"
+          element={
+            <ProjectsPage
+              currentUser={currentUser}
+              users={users}
+              onOpenWorkstation={handleOpenWorkstationForProject}
+            />
+          }
         />
-      )}
-
-      {activeTab === 'workstation' && (
-        <WorkstationPage
-          projects={projects}
-          activeProject={activeProject}
-          onSelectProject={setActiveProject}
-          onRefreshProjects={loadProjects}
+        <Route
+          path="/workstation"
+          element={
+            <WorkstationPage
+              projects={projects}
+              activeProject={activeProject}
+              onSelectProject={setActiveProject}
+              onRefreshProjects={loadProjects}
+            />
+          }
         />
-      )}
-
-      {activeTab === 'jobs' && <JobsPage />}
-
-      {activeTab === 'users' && (
-        <UsersPage
-          users={users}
-          projects={projects}
-          currentUser={currentUser}
-          onRefreshUsers={loadUsers}
+        <Route
+          path="/workstation/:projectId"
+          element={
+            <WorkstationPage
+              projects={projects}
+              activeProject={activeProject}
+              onSelectProject={setActiveProject}
+              onRefreshProjects={loadProjects}
+            />
+          }
         />
-      )}
+        <Route path="/jobs" element={<JobsPage />} />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute user={currentUser} allowedRoles={['Admin']}>
+              <UsersPage
+                users={users}
+                projects={projects}
+                currentUser={currentUser}
+                onRefreshUsers={loadUsers}
+              />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/storage" element={<SettingsPage currentUser={currentUser} />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Route>
+    </Routes>
+  );
+}
 
-      {activeTab === 'settings' && <SettingsPage currentUser={currentUser} />}
-    </MainLayout>
+export function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 
