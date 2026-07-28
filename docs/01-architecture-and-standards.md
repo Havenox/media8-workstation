@@ -30,7 +30,7 @@ O Dashboard consome as estatísticas consolidadas da estação a partir de um en
 1. **Banimento Estrito de Emojis**:
    - Emojis unicode estão proibidos no código frontend.
    - Toda a representação de mídia, arquivos, status ou ações utiliza exclusivamente ícones vetoriais da biblioteca **Lucide React**.
-2. **Componentes Customizados & Dropdowns (`LinkTypeSelect`)**:
+2. **Componentes Customizados & Dropdowns (`LinkTypeSelect` e `UserRoleSelect`)**:
    - Proibido o uso de `<select>` nativo do navegador em formulários da estação.
    - Os dropdowns utilizam componentes baseados em ShadCN UI / Radix (`Popover`/`Select`), com cantos arredondados (`rounded-xl`), sombra (`shadow-xl`), fundo creme (`#FFFBED`) e ícones vetoriais associados a cada opção.
 3. **Hierarquia Tipográfica & Contraste de Hover**:
