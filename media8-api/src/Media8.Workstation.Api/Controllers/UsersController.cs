@@ -17,13 +17,55 @@ public class UsersController(WorkstationDbContext context) : WorkstationBaseCont
     private static readonly PasswordHasher<User> _passwordHasher = new();
 
     /// <summary>
-    /// Lista todos os usuários cadastrados no sistema.
+    /// Obtém estatísticas consolidadas numéricas dos usuários cadastrados no sistema.
+    /// </summary>
+    [HttpGet("Stats")]
+    public async Task<ActionResult<UserStatsDto>> GetUserStats()
+    {
+        var totalUsers = await context.Users.CountAsync();
+        var adminCount = await context.Users.CountAsync(u => u.Role == "Admin");
+        var editorCount = await context.Users.CountAsync(u => u.Role == "Editor");
+
+        return Ok(new UserStatsDto
+        {
+            TotalUsers = totalUsers,
+            AdminCount = adminCount,
+            EditorCount = editorCount
+        });
+    }
+
+    /// <summary>
+    /// Lista os usuários com suporte a paginação (20 em 20), busca e filtros por papel.
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
+    public async Task<ActionResult<PagedResultDto<UserDto>>> GetUsers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] string? role = null)
     {
-        var users = await context.Users
+        var query = context.Users.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(role) && role.ToUpper() != "ALL")
+        {
+            query = query.Where(u => u.Role == role);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var cleanSearch = search.Trim().ToLower();
+            query = query.Where(u =>
+                u.Name.ToLower().Contains(cleanSearch) ||
+                u.Email.ToLower().Contains(cleanSearch));
+        }
+
+        var totalCount = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        var users = await query
             .OrderByDescending(u => u.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(u => new UserDto
             {
                 UserId = u.UserId,
@@ -34,7 +76,13 @@ public class UsersController(WorkstationDbContext context) : WorkstationBaseCont
             })
             .ToListAsync();
 
-        return Ok(users);
+        return Ok(new PagedResultDto<UserDto>
+        {
+            Items = users,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        });
     }
 
     /// <summary>
@@ -69,6 +117,49 @@ public class UsersController(WorkstationDbContext context) : WorkstationBaseCont
         await context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetUsers), new { id = user.UserId }, new UserDto
+        {
+            UserId = user.UserId,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            CreatedAt = user.CreatedAt
+        });
+    }
+
+    /// <summary>
+    /// Atualiza o perfil e permissões de um usuário existente (Exclusivo para Administradores).
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<UserDto>> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u => u.UserId == id);
+        if (user == null) return NotFound(new { Message = "Usuário não encontrado." });
+
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { Message = "Nome e e-mail são obrigatórios." });
+        }
+
+        var emailClean = request.Email.Trim().ToLower();
+        var emailTaken = await context.Users.AnyAsync(u => u.UserId != id && u.Email.ToLower() == emailClean);
+        if (emailTaken)
+        {
+            return BadRequest(new { Message = "O e-mail informado já está em uso por outro usuário." });
+        }
+
+        user.Name = request.Name.Trim();
+        user.Email = emailClean;
+        user.Role = string.IsNullOrWhiteSpace(request.Role) ? "Editor" : request.Role;
+
+        if (!string.IsNullOrWhiteSpace(request.Password))
+        {
+            user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
+        }
+
+        await context.SaveChangesAsync();
+
+        return Ok(new UserDto
         {
             UserId = user.UserId,
             Name = user.Name,
