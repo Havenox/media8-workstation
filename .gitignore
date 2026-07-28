@@ -1,0 +1,92 @@
+# =============================================================================
+# Media 8 | Workstation - Git Ignore Specification
+# =============================================================================
+
+# 1. Secret & Environment Files
+.env
+*.env
+*.env.local
+*.env.production
+*.env.development
+!*.env.example
+
+# 2. Local Media Storage & Blobs (NUNCA commitar arquivos pesados de mídias/proxies)
+storage/
+/storage/
+storage_data/
+/storage_data/
+postgres_data/
+/postgres_data/
+minio_data/
+/minio_data/
+
+# Formatos de Vídeo Bruto (RAW) e Broadcast
+*.mov
+*.mxf
+*.prores
+*.dnxhd
+*.raw
+*.arw
+*.cr2
+*.nef
+*.dng
+*.m2ts
+*.ts
+*.mkv
+*.avi
+*.wmv
+
+# Formatos de Renderização e Proxies
+*.mp4
+*.webm
+*.m4v
+
+# Formatos de Áudio
+*.wav
+*.mp3
+*.aac
+*.opus
+*.flac
+*.ogg
+
+# 3. .NET 10 & C# Build Outputs
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.userprefs
+TestResults/
+*.coverage
+
+# 4. Node.js & React SPA (media8-web)
+node_modules/
+/media8-web/node_modules/
+dist/
+/media8-web/dist/
+build/
+.output/
+.vite/
+/media8-web/.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.stylelintcache
+
+# 5. IDE, Editors & OS Files
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini

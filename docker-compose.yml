@@ -1,0 +1,56 @@
+services:
+  api:
+    build:
+      context: ./media8-api
+      dockerfile: Dockerfile
+    container_name: media8_workstation_api
+    restart: unless-stopped
+    environment:
+      - ConnectionStrings__PostgreSQL=${DB_CONNECTION_STRING}
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+    ports:
+      - "${API_PORT:-5000}:5000"
+    volumes:
+      - media_storage:/storage
+
+  worker-ingestion:
+    build:
+      context: ./media8-workers
+      dockerfile: Dockerfile.workers
+      args:
+        WORKER_PROJECT: Media8.Workstation.Worker.Ingestion
+    container_name: media8_workstation_worker_ingestion
+    restart: unless-stopped
+    environment:
+      - ConnectionStrings__PostgreSQL=${DB_CONNECTION_STRING}
+      - WORKER_ID=ingestion-worker-1
+    volumes:
+      - media_storage:/storage
+
+  worker-transcoder:
+    build:
+      context: ./media8-workers
+      dockerfile: Dockerfile.workers
+      args:
+        WORKER_PROJECT: Media8.Workstation.Worker.Transcoder
+    container_name: media8_workstation_worker_transcoder
+    restart: unless-stopped
+    environment:
+      - ConnectionStrings__PostgreSQL=${DB_CONNECTION_STRING}
+      - WORKER_ID=transcoder-worker-1
+    volumes:
+      - media_storage:/storage
+
+  web:
+    build:
+      context: ./media8-web
+      dockerfile: Dockerfile
+    container_name: media8_workstation_web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    depends_on:
+      - api
+
+volumes:
+  media_storage:
