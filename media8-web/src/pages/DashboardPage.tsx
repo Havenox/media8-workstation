@@ -1,6 +1,7 @@
-import React from 'react';
-import { FolderKanban, Clock, Video, CheckCircle2, Plus, Play, ArrowRight } from 'lucide-react';
-import type { Project, User } from '../types';
+import React, { useState, useEffect } from 'react';
+import { FolderKanban, Clock, Video, CheckCircle2, Plus, Play, ArrowRight, Loader2 } from 'lucide-react';
+import type { Project, ProjectStats, User } from '../types';
+import { ProjectService } from '../services/api';
 import { Button } from '../components/ui/button';
 
 interface DashboardPageProps {
@@ -16,9 +17,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onNavigateTab,
   onOpenWorkstation,
 }) => {
-  const inProductionProjects = projects.filter((p) => p.Status === 'InProduction');
-  const inReviewProjects = projects.filter((p) => p.Status === 'InReview');
-  const completedProjects = projects.filter((p) => p.Status === 'Completed');
+  const [stats, setStats] = useState<ProjectStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setIsLoadingStats(true);
+        const data = await ProjectService.getProjectStats();
+        setStats(data);
+      } catch (err) {
+        console.error('Erro ao carregar estatísticas do dashboard:', err);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -59,12 +75,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* 4 Stat Summary Cards */}
+      {/* 4 Stat Summary Cards (Dados Consolidados do Endpoint GET /api/v1/Projects/Stats) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-xl border border-[#400404]/15 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-[#5C1212]">Total de Projetos</p>
-            <p className="text-2xl font-bold text-[#400404] mt-1 tracking-tight">{projects.length}</p>
+            <p className="text-2xl font-bold text-[#400404] mt-1 tracking-tight">
+              {isLoadingStats ? <Loader2 className="w-5 h-5 animate-spin text-[#400404]/60" /> : (stats?.TotalCount ?? projects.length)}
+            </p>
             <p className="text-[11px] text-emerald-800 font-medium mt-1">Produtora Ativa</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-[#FFFBED] border border-[#400404]/15 flex items-center justify-center text-[#400404]">
@@ -75,7 +93,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="bg-white p-5 rounded-xl border border-[#400404]/15 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-[#5C1212]">Em Produção</p>
-            <p className="text-2xl font-bold text-[#400404] mt-1 tracking-tight">{inProductionProjects.length}</p>
+            <p className="text-2xl font-bold text-[#400404] mt-1 tracking-tight">
+              {isLoadingStats ? <Loader2 className="w-5 h-5 animate-spin text-[#400404]/60" /> : (stats?.InProductionCount ?? 0)}
+            </p>
             <p className="text-[11px] text-amber-800 font-medium mt-1">sendo editados</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-900">
@@ -86,7 +106,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="bg-white p-5 rounded-xl border border-[#400404]/15 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-[#5C1212]">Em Revisão</p>
-            <p className="text-2xl font-bold text-[#400404] mt-1 tracking-tight">{inReviewProjects.length}</p>
+            <p className="text-2xl font-bold text-[#400404] mt-1 tracking-tight">
+              {isLoadingStats ? <Loader2 className="w-5 h-5 animate-spin text-[#400404]/60" /> : (stats?.InReviewCount ?? 0)}
+            </p>
             <p className="text-[11px] text-blue-800 font-medium mt-1">aprovação final</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-900">
@@ -97,7 +119,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="bg-white p-5 rounded-xl border border-[#400404]/15 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-[#5C1212]">Concluídos</p>
-            <p className="text-2xl font-bold text-[#400404] mt-1 tracking-tight">{completedProjects.length}</p>
+            <p className="text-2xl font-bold text-[#400404] mt-1 tracking-tight">
+              {isLoadingStats ? <Loader2 className="w-5 h-5 animate-spin text-[#400404]/60" /> : (stats?.CompletedCount ?? 0)}
+            </p>
             <p className="text-[11px] text-emerald-800 font-medium mt-1">Purga RAW liberada</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-900">

@@ -26,6 +26,15 @@ export interface CreateUserRequest {
   Role: 'Admin' | 'Editor';
 }
 
+export interface ProjectStats {
+  TotalCount: number;
+  InProductionCount: number;
+  InReviewCount: number;
+  CompletedCount: number;
+  DraftCount: number;
+  CancelledCount: number;
+}
+
 export interface ProjectLink {
   ProjectLinkId?: string;
   ProjectId?: string;
@@ -67,15 +76,6 @@ export interface TimecodeMarker {
   ColorHex: string;
   CreatedByUserId: string;
   CreatedAt: string;
-  CreatedByUser?: User;
-}
-
-export interface ProjectEditor {
-  ProjectEditorId: string;
-  ProjectId: string;
-  UserId: string;
-  AssignedAt: string;
-  User?: User;
 }
 
 export interface Project {
@@ -86,37 +86,39 @@ export interface Project {
   Deadline?: string;
   Status: 'Draft' | 'InProduction' | 'InReview' | 'Completed' | 'Cancelled';
   AutoIngest?: boolean;
-  IsDeleted?: boolean;
   CreatedByUserId: string;
   CreatedAt: string;
   UpdatedAt: string;
-  CreatedByUser?: User;
-  AssignedEditors?: ProjectEditor[];
+  AssignedEditors?: any[];
   Assets?: WorkstationAsset[];
+  Links?: ProjectLink[];
+}
+
+export interface CreateProjectRequest {
+  Title: string;
+  BriefingText?: string;
+  ExternalOrderReference?: string;
+  Deadline?: string;
+  AutoIngest?: boolean;
+  CreatedByUserId: string;
+  Links?: ProjectLink[];
+}
+
+export interface UpdateProjectRequest {
+  Title: string;
+  BriefingText?: string;
+  ExternalOrderReference?: string;
+  Deadline?: string;
+  Status: string;
+  AutoIngest?: boolean;
   Links?: ProjectLink[];
 }
 
 export interface PagedResult<T> {
   Items: T[];
+  TotalCount: number;
   Page: number;
   PageSize: number;
-  TotalCount: number;
   TotalPages: number;
   HasNextPage: boolean;
-}
-
-export interface MediaProcessingJob {
-  JobId: string;
-  AssetId: string;
-  JobType: 'IngestDownload' | 'GenerateHighFidelity' | 'GenerateProxy' | 'ExtractWaveform' | 'CutSubClip';
-  Status: 'Pending' | 'Processing' | 'Completed' | 'Failed';
-  Priority: number;
-  Attempts: number;
-  MaxAttempts: number;
-  ErrorMessage?: string;
-  LockedByWorkerId?: string;
-  LockedAt?: string;
-  CreatedAt: string;
-  UpdatedAt: string;
-  Asset?: WorkstationAsset;
 }
