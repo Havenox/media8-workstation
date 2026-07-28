@@ -85,6 +85,7 @@ export interface Project {
   ExternalOrderReference?: string;
   Deadline?: string;
   Status: 'Draft' | 'InProduction' | 'InReview' | 'Completed' | 'Cancelled';
+  AutoIngest?: boolean;
   IsDeleted?: boolean;
   CreatedByUserId: string;
   CreatedAt: string;

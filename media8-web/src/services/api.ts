@@ -77,7 +77,6 @@ export const UserService = {
 };
 
 export const ProjectService = {
-  // Retorna Projetos Paginados ou Limite para Dashboard
   getProjects: async (params?: {
     page?: number;
     pageSize?: number;
@@ -99,6 +98,7 @@ export const ProjectService = {
     BriefingText?: string;
     ExternalOrderReference?: string;
     Deadline?: string;
+    AutoIngest?: boolean;
     CreatedByUserId: string;
     Links?: ProjectLink[];
   }): Promise<Project> => {
@@ -112,9 +112,15 @@ export const ProjectService = {
     ExternalOrderReference?: string;
     Deadline?: string;
     Status: string;
+    AutoIngest?: boolean;
     Links?: ProjectLink[];
   }): Promise<Project> => {
     const response = await api.put<Project>(`/Projects/${id}`, projectData);
+    return response.data;
+  },
+
+  triggerProjectIngest: async (id: string): Promise<{ EnqueuedCount: number; SkippedCount: number; TotalLinks: number }> => {
+    const response = await api.post(`/Projects/${id}/TriggerIngest`);
     return response.data;
   },
 
@@ -133,16 +139,6 @@ export const AssetService = {
 
   getAssetById: async (id: string): Promise<WorkstationAsset> => {
     const response = await api.get<WorkstationAsset>(`/Assets/${id}`);
-    return response.data;
-  },
-
-  ingestMedia: async (data: {
-    ProjectId: string;
-    Title: string;
-    ExternalSourceUrl: string;
-    OriginalFileName: string;
-  }): Promise<WorkstationAsset> => {
-    const response = await api.post<WorkstationAsset>('/Assets/Ingest', data);
     return response.data;
   },
 };

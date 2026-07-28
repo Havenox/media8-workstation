@@ -3,9 +3,8 @@ import type { Project, WorkstationAsset, TimecodeMarker } from '../types';
 import { TimecodePlayer } from '../components/TimecodePlayer';
 import { WaveformCanvas } from '../components/WaveformCanvas';
 import { SubClipEditor } from '../components/SubClipEditor';
-import { IngestModal } from '../components/IngestModal';
-import { TimecodeService } from '../services/api';
-import { Film, Plus, FileCode } from 'lucide-react';
+import { TimecodeService, ProjectService } from '../services/api';
+import { Film, Zap, FileCode, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
 interface WorkstationPageProps {
@@ -23,7 +22,8 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
 }) => {
   const [selectedAsset, setSelectedAsset] = useState<WorkstationAsset | undefined>(undefined);
   const [markers, setMarkers] = useState<TimecodeMarker[]>([]);
-  const [isIngestModalOpen, setIsIngestModalOpen] = useState(false);
+  const [isTriggeringIngest, setIsTriggeringIngest] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
   const [inPoint, setInPoint] = useState('00:00:00:00');
   const [outPoint, setOutPoint] = useState('00:00:00:00');
@@ -57,6 +57,24 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
     }
   }, [selectedAsset]);
 
+  // Trigger Ingest Handler
+  const handleTriggerIngest = async () => {
+    if (!activeProject) return;
+    try {
+      setIsTriggeringIngest(true);
+      setFeedbackMsg(null);
+      const res = await ProjectService.triggerProjectIngest(activeProject.ProjectId);
+      setFeedbackMsg(
+        `Ingestão iniciada! ${res.EnqueuedCount} mídias enfileiradas na esteira.`
+      );
+      onRefreshProjects();
+    } catch (err) {
+      alert('Erro ao disparar a ingestão de mídias.');
+    } finally {
+      setIsTriggeringIngest(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Selector Bar */}
@@ -73,7 +91,7 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
           </div>
         </div>
 
-        {/* Project Selector Dropdown */}
+        {/* Project Selector Dropdown & Manual Trigger */}
         <div className="flex items-center gap-3">
           <select
             value={activeProject?.ProjectId || ''}
@@ -91,17 +109,32 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
             ))}
           </select>
 
-          {activeProject && (
+          {activeProject && activeProject.Links && activeProject.Links.length > 0 && (
             <Button
-              onClick={() => setIsIngestModalOpen(true)}
+              onClick={handleTriggerIngest}
+              disabled={isTriggeringIngest}
               className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] text-xs font-semibold py-2 px-3 rounded-lg flex items-center gap-1.5 cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
-              <span>Ingestão de Mídia</span>
+              {isTriggeringIngest ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4 text-amber-300 fill-current" />
+              )}
+              <span>Iniciar Ingestão de Mídias</span>
             </Button>
           )}
         </div>
       </div>
+
+      {feedbackMsg && (
+        <div className="p-3 bg-emerald-100 border border-emerald-300 rounded-lg text-xs font-bold text-emerald-950 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+            <span>{feedbackMsg}</span>
+          </div>
+          <button onClick={() => setFeedbackMsg(null)} className="text-xs text-emerald-800 underline font-bold cursor-pointer">Fechar</button>
+        </div>
+      )}
 
       {/* Main Workstation 3-Column Grid */}
       <div className="grid grid-cols-12 gap-6">
@@ -118,8 +151,8 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {!activeProject?.Assets || activeProject.Assets.length === 0 ? (
-                <div className="text-center py-6 text-[#400404] font-semibold text-xs italic bg-[#FFFBED] p-3 rounded-lg border border-[#400404]/15">
-                  Nenhuma mídia cadastrada neste projeto. Clique em "+ Ingestão de Mídia" para enviar.
+                <div className="text-center py-6 text-[#400404] font-semibold text-xs italic bg-[#FFFBED] p-3 rounded-lg border border-[#400404]/15 leading-relaxed">
+                  Nenhuma mídia gerada até o momento. Clique em "Iniciar Ingestão de Mídias" para processar os links cadastrados no projeto.
                 </div>
               ) : (
                 activeProject.Assets.map((asset) => (
@@ -187,16 +220,6 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
           />
         </div>
       </div>
-
-      {/* Ingest Modal */}
-      {activeProject && (
-        <IngestModal
-          isOpen={isIngestModalOpen}
-          onClose={() => setIsIngestModalOpen(false)}
-          projectId={activeProject.ProjectId}
-          onSuccess={onRefreshProjects}
-        />
-      )}
     </div>
   );
 };
