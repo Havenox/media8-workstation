@@ -11,6 +11,8 @@ using Xunit;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 
+using Microsoft.Extensions.Configuration;
+
 namespace Media8.Workstation.UnitTests;
 
 public class TestHostEnvironment : IWebHostEnvironment
@@ -37,7 +39,8 @@ public class UsersControllerTests
     private UsersController CreateControllerWithUserClaims(WorkstationDbContext context, Guid userId, string role)
     {
         var env = new TestHostEnvironment();
-        var controller = new UsersController(context, env);
+        var config = new ConfigurationBuilder().Build();
+        var controller = new UsersController(context, env, config);
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),

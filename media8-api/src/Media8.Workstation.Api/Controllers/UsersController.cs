@@ -15,7 +15,7 @@ namespace Media8.Workstation.Api.Controllers;
 /// Controlador responsável pelo gerenciamento de Usuários, Funções e Avatares de Perfil.
 /// </summary>
 [Authorize]
-public class UsersController(WorkstationDbContext context, IWebHostEnvironment environment) : WorkstationBaseController
+public class UsersController(WorkstationDbContext context, IWebHostEnvironment environment, IConfiguration configuration) : WorkstationBaseController
 {
     private static readonly PasswordHasher<User> _passwordHasher = new();
 
@@ -194,9 +194,21 @@ public class UsersController(WorkstationDbContext context, IWebHostEnvironment e
             return BadRequest(new { Message = "Nenhum arquivo de imagem foi enviado." });
         }
 
-        // 1. Ensure /storage/avatars directory exists inside WebRoot / Root
-        var webRoot = environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-        var avatarsDir = Path.Combine(webRoot, "storage", "avatars");
+        // 1. Resolve Storage Directory (Docker volume /storage or local media8-storage)
+        var storagePath = configuration["STORAGE_PATH"];
+        if (string.IsNullOrWhiteSpace(storagePath))
+        {
+            storagePath = Directory.Exists("/storage") 
+                ? "/storage" 
+                : Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "media8-storage"));
+
+            if (!Directory.Exists(storagePath))
+            {
+                storagePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "media8-storage"));
+            }
+        }
+
+        var avatarsDir = Path.Combine(storagePath, "avatars");
         if (!Directory.Exists(avatarsDir))
         {
             Directory.CreateDirectory(avatarsDir);

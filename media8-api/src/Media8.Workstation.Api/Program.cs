@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -120,7 +121,30 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 
-app.UseStaticFiles();
+var storagePath = builder.Configuration["STORAGE_PATH"];
+if (string.IsNullOrWhiteSpace(storagePath))
+{
+    storagePath = Directory.Exists("/storage") 
+        ? "/storage" 
+        : Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "media8-storage"));
+
+    if (!Directory.Exists(storagePath))
+    {
+        storagePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "media8-storage"));
+    }
+}
+
+if (!Directory.Exists(storagePath))
+{
+    Directory.CreateDirectory(storagePath);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(storagePath),
+    RequestPath = "/storage"
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 
