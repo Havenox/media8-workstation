@@ -101,6 +101,12 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
             return BadRequest(new { Message = "O título do projeto é obrigatório." });
         }
 
+        // Validação defensiva de data de entrega
+        if (request.Deadline.HasValue && request.Deadline.Value.Date < DateTime.UtcNow.Date)
+        {
+            return BadRequest(new { Message = "O prazo de entrega não pode ser uma data passada." });
+        }
+
         // Validação defensiva de URLs nos links informados
         foreach (var link in request.Links)
         {
@@ -157,6 +163,12 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         if (string.IsNullOrWhiteSpace(request.Title))
         {
             return BadRequest(new { Message = "O título do projeto é obrigatório." });
+        }
+
+        // Validação defensiva de data de entrega
+        if (request.Deadline.HasValue && request.Deadline.Value.Date < DateTime.UtcNow.Date)
+        {
+            return BadRequest(new { Message = "O prazo de entrega não pode ser uma data passada." });
         }
 
         project.Title = request.Title.Trim();

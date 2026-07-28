@@ -17,7 +17,7 @@ import {
   Calendar as CalendarIcon,
   Clock,
 } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { format, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Project, ProjectLink, User } from '../types';
 import { ProjectService } from '../services/api';
@@ -77,6 +77,8 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  const today = startOfDay(new Date());
+
   // Dynamic Links Handler
   const handleAddLinkField = () => {
     setLinkItems((prev) => [
@@ -113,6 +115,12 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
     if (!title.trim()) {
       setValidationError('Por favor, informe o Título do Projeto.');
+      return;
+    }
+
+    // Validate Deadline (Must not be in the past)
+    if (selectedDeadline && startOfDay(selectedDeadline) < today) {
+      setValidationError('O prazo de entrega não pode ser uma data passada.');
       return;
     }
 
@@ -477,14 +485,16 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                       </button>
                     </div>
 
-                    {/* Calendário ShadCN */}
+                    {/* Calendário ShadCN com bloqueio de datas passadas */}
                     <Calendar
                       mode="single"
                       selected={selectedDeadline}
                       onSelect={(date) => {
+                        if (date && startOfDay(date) < today) return;
                         setSelectedDeadline(date);
                         setIsCalendarOpen(false);
                       }}
+                      disabled={(date) => startOfDay(date) < today}
                       initialFocus
                       className="bg-[#FFFBED] text-[#400404]"
                     />
