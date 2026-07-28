@@ -13,6 +13,8 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-S3cur3S3cr3tKeyM3dia8Workstati0n2026!Min32Chars}
       - JWT_ISSUER=${JWT_ISSUER:-Media8Workstation}
       - JWT_AUDIENCE=${JWT_AUDIENCE:-Media8WorkstationUsers}
+      - CORS_RESTRICTED=${CORS_RESTRICTED:-false}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
     ports:
       - "${API_PORT:-5000}:5000"
     volumes:
