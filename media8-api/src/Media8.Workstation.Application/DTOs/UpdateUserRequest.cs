@@ -9,4 +9,5 @@ public class UpdateUserRequest
     public string Email { get; set; } = string.Empty;
     public string Role { get; set; } = "Editor";
     public string? Password { get; set; }
+    public string? AvatarUrl { get; set; }
 }

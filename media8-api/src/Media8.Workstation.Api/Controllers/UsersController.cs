@@ -5,14 +5,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Processing;
 
 namespace Media8.Workstation.Api.Controllers;
 
 /// <summary>
-/// Controlador responsável pelo gerenciamento de Usuários e permissões RBAC.
+/// Controlador responsável pelo gerenciamento de Usuários, Funções e Avatares de Perfil.
 /// </summary>
 [Authorize]
-public class UsersController(WorkstationDbContext context) : WorkstationBaseController
+public class UsersController(WorkstationDbContext context, IWebHostEnvironment environment) : WorkstationBaseController
 {
     private static readonly PasswordHasher<User> _passwordHasher = new();
 
@@ -35,7 +38,7 @@ public class UsersController(WorkstationDbContext context) : WorkstationBaseCont
     }
 
     /// <summary>
-    /// Lista os usuários com suporte a paginação (20 em 20), busca e filtros por papel.
+    /// Lista os usuários com suporte a paginação (20 em 20), busca e filtros por função.
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<PagedResultDto<UserDto>>> GetUsers(
@@ -60,7 +63,6 @@ public class UsersController(WorkstationDbContext context) : WorkstationBaseCont
         }
 
         var totalCount = await query.CountAsync();
-        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
         var users = await query
             .OrderByDescending(u => u.CreatedAt)
@@ -72,6 +74,7 @@ public class UsersController(WorkstationDbContext context) : WorkstationBaseCont
                 Name = u.Name,
                 Email = u.Email,
                 Role = u.Role,
+                AvatarUrl = u.AvatarUrl,
                 CreatedAt = u.CreatedAt
             })
             .ToListAsync();
@@ -108,6 +111,7 @@ public class UsersController(WorkstationDbContext context) : WorkstationBaseCont
             Name = request.Name.Trim(),
             Email = request.Email.Trim().ToLower(),
             Role = string.IsNullOrWhiteSpace(request.Role) ? "Editor" : request.Role,
+            AvatarUrl = request.AvatarUrl,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -122,12 +126,13 @@ public class UsersController(WorkstationDbContext context) : WorkstationBaseCont
             Name = user.Name,
             Email = user.Email,
             Role = user.Role,
+            AvatarUrl = user.AvatarUrl,
             CreatedAt = user.CreatedAt
         });
     }
 
     /// <summary>
-    /// Atualiza o perfil e permissões de um usuário existente (Exclusivo para Administradores).
+    /// Atualiza as informações de cadastro e função de um usuário (Exclusivo para Administradores).
     /// </summary>
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Admin")]
@@ -151,6 +156,10 @@ public class UsersController(WorkstationDbContext context) : WorkstationBaseCont
         user.Name = request.Name.Trim();
         user.Email = emailClean;
         user.Role = string.IsNullOrWhiteSpace(request.Role) ? "Editor" : request.Role;
+        if (request.AvatarUrl != null)
+        {
+            user.AvatarUrl = request.AvatarUrl;
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Password))
         {
@@ -165,7 +174,66 @@ public class UsersController(WorkstationDbContext context) : WorkstationBaseCont
             Name = user.Name,
             Email = user.Email,
             Role = user.Role,
+            AvatarUrl = user.AvatarUrl,
             CreatedAt = user.CreatedAt
         });
+    }
+
+    /// <summary>
+    /// Efetua o upload, validação de segurança (Magic Bytes), crop 200x200px e conversão para WebP (80% qualidade) da foto de perfil.
+    /// </summary>
+    [HttpPost("{id:guid}/avatar")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<object>> UploadAvatar(Guid id, IFormFile file)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u => u.UserId == id);
+        if (user == null) return NotFound(new { Message = "Usuário não encontrado." });
+
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { Message = "Nenhum arquivo de imagem foi enviado." });
+        }
+
+        // 1. Ensure /storage/avatars directory exists inside WebRoot / Root
+        var webRoot = environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        var avatarsDir = Path.Combine(webRoot, "storage", "avatars");
+        if (!Directory.Exists(avatarsDir))
+        {
+            Directory.CreateDirectory(avatarsDir);
+        }
+
+        // 2. Process Image using ImageSharp: Validate Magic Bytes, Crop/Resize to 200x200px & Save WebP @ 80% Quality
+        var fileName = $"{user.UserId}.webp";
+        var filePath = Path.Combine(avatarsDir, fileName);
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            using var image = await Image.LoadAsync(stream);
+
+            image.Mutate(x => x.Resize(new ResizeOptions
+            {
+                Size = new Size(200, 200),
+                Mode = ResizeMode.Crop
+            }));
+
+            var encoder = new WebpEncoder
+            {
+                Quality = 80
+            };
+
+            await image.SaveAsync(filePath, encoder);
+        }
+        catch
+        {
+            return BadRequest(new { Message = "O arquivo enviado é inválido ou não é um formato de imagem reconhecido." });
+        }
+
+        // 4. Update Database AvatarUrl with cache-busting timestamp
+        var relativeUrl = $"/storage/avatars/{fileName}?v={DateTime.UtcNow.Ticks}";
+        user.AvatarUrl = relativeUrl;
+        await context.SaveChangesAsync();
+
+        return Ok(new { AvatarUrl = relativeUrl, Message = "Foto de perfil processada e salva com sucesso!" });
     }
 }

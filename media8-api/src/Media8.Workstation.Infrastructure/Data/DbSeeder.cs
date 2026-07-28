@@ -13,6 +13,10 @@ public static class DbSeeder
     {
         try
         {
+            // 0. Ensure Users table has AvatarUrl column
+            await dbContext.Database.ExecuteSqlRawAsync(@"
+                ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""AvatarUrl"" text NULL;
+            ");
             // 1. Create Projects table if missing
             await dbContext.Database.ExecuteSqlRawAsync(@"
                 CREATE TABLE IF NOT EXISTS ""Projects"" (

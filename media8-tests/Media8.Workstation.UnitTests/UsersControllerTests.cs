@@ -8,7 +8,20 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.FileProviders;
+
 namespace Media8.Workstation.UnitTests;
+
+public class TestHostEnvironment : IWebHostEnvironment
+{
+    public string ApplicationName { get; set; } = "TestApp";
+    public IFileProvider ContentRootFileProvider { get; set; } = null!;
+    public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
+    public string EnvironmentName { get; set; } = "Development";
+    public IFileProvider WebRootFileProvider { get; set; } = null!;
+    public string WebRootPath { get; set; } = Directory.GetCurrentDirectory();
+}
 
 public class UsersControllerTests
 {
@@ -23,7 +36,8 @@ public class UsersControllerTests
 
     private UsersController CreateControllerWithUserClaims(WorkstationDbContext context, Guid userId, string role)
     {
-        var controller = new UsersController(context);
+        var env = new TestHostEnvironment();
+        var controller = new UsersController(context, env);
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
