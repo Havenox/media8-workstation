@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 1.9.0  
+> *Versão:* 2.2.0  
 > *Status:* Ativo  
 
 ---
@@ -15,7 +15,22 @@ O **Media 8 | Workstation** segue a política de **Zero-Hardcode**. O projeto **
 
 ---
 
-## 2. Padrão Arquitetural `WorkstationBaseController` (`api/v1/[controller]`)
+## 2. Diretrizes de Design Visual Premium (Padrão Apple / Media 8 Design System)
+
+1. **Banimento Estrito de Emojis**:
+   - Emojis unicode estão proibidos no código frontend.
+   - Toda a representação de mídia, arquivos, status ou ações utiliza exclusivamente ícones vetoriais da biblioteca **Lucide React**.
+2. **Componentes Customizados & Dropdowns (`LinkTypeSelect`)**:
+   - Proibido o uso de `<select>` nativo do navegador em formulários da estação.
+   - Os dropdowns devem utilizar componentes baseados em ShadCN UI / Radix (`Popover`/`Select`), com cantos arredondados (`rounded-xl`), sombra (`shadow-xl`), fundo creme (`#FFFBED`) e ícones vetoriais associados a cada opção.
+3. **Hierarquia Tipográfica & Contraste de Hover**:
+   - Títulos primários: `font-semibold text-base text-[#400404] tracking-tight`.
+   - Textos secundários e descrições: `font-normal text-xs text-[#5C1212]/80`.
+   - Elementos interativos em hover invertem a cor do texto e dos ícones vetoriais simultaneamente via `group-hover:text-[#FFFBED]`.
+
+---
+
+## 3. Padrão Arquitetural `WorkstationBaseController` (`api/v1/[controller]`)
 
 Todos os controladores da API .NET 10 herdam obrigatoriamente da classe base abstrata **`WorkstationBaseController`**:
 
@@ -29,63 +44,9 @@ public abstract class WorkstationBaseController : ControllerBase
 }
 ```
 
-### Vantagens do Padrão:
-1. **Roteamento Centralizado Versionado**: Todos os endpoints da API atendem sob a rota unificada `/api/v1/[controller]`.
-2. **Conformidade DRY (Don't Repeat Yourself)**: Nenhum controlador individual precisa declarar repetidamente `[ApiController]` ou `[Route(...)]`.
-3. **Evolução de API sem Quebras**: Qualquer atualização no prefixo global da API é realizada em um único arquivo de código C#.
-
 ---
 
-## 3. Estrutura de Armazenamento por Projeto (`/storage/{projectId}/...`)
-
-Os arquivos de mídias físicas gerados pelos Workers são agrupados por **Projeto**, utilizando a GUID do Projeto no banco de dados como pasta raiz:
-
-```text
-/storage/
-└── {projectId}/
-    ├── raw/           # Downloads temporários de mídias brutas (purgados pós-transcode)
-    ├── high_fidelity/ # Camada 1: Codec otimizado de alta fidelidade
-    ├── proxies/       # Camada 2: Vídeos proxies leves WebM 720p
-    └── waveforms/     # JSON de picos de áudio para o Canvas 2D
-```
-
----
-
-## 4. Modelo de Segurança, JWT & Controle de Acesso (RBAC)
-
-O ecossistema impõe segregação estrita de privacidade por projetos e por papéis:
-
-1. **👑 Admin (Administrador):**
-   - Possui privilégios globais de leitura, escrita e exclusão.
-   - Pode cadastrar novos usuários (`POST /api/v1/Users`), atribuir editores a Projetos ou autoatribuir-se a qualquer projeto.
-   - Acumula a capacidade operacional total de um Editor em qualquer tela do Workstation.
-2. **🎬 Editor (Editor):**
-   - Acesso estrito e delimitado **apenas aos Projetos para os quais foi formalmente atribuído** via tabela de junção `ProjectEditors`.
-   - Imposto diretamente na API `ProjectsController` através dos Claims do JWT Bearer Token (`User.FindFirstValue(ClaimTypes.NameIdentifier)` e `User.FindFirstValue(ClaimTypes.Role)`).
-   - Isolamento total contra outros projetos do sistema.
-
----
-
-## 5. Padrões de Paginação & Carregamento (`PagedResultDto<T>`)
-
-1. **Estrutura Paginada Oficial**:
-   ```csharp
-   public class PagedResultDto<T>
-   {
-       public IEnumerable<T> Items { get; set; } = new List<T>();
-       public int Page { get; set; }
-       public int PageSize { get; set; }
-       public long TotalCount { get; set; }
-       public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
-       public bool HasNextPage => Page < TotalPages;
-   }
-   ```
-2. **Dashboard (`/`)**: Carrega limite fixo de 5 mais recentes (`GET /api/v1/Projects?limit=5`).
-3. **Página de Projetos (`/projetos`)**: Paginação em lotes de 20 (`pageSize=20`) integrada a **Scroll Infinito** via Intersection Observer.
-
----
-
-## 6. Histórico de Estudos de Caso
+## 4. Histórico de Estudos de Caso
 
 - **[Estudo de Caso 001](implementations/001-integracao-inicial-workstation-dotnet10.md):** Arquitetura inicial .NET 10, JWT e SignalR.
 - **[Estudo de Caso 002](implementations/002-credenciais-iniciais-admin-dotenv.md):** Injeção de credenciais de Admin via `.env` e Seeding dinâmico.
@@ -93,3 +54,6 @@ O ecossistema impõe segregação estrita de privacidade por projetos e por pap�
 - **[Estudo de Caso 004](implementations/004-arquitetura-projetos-mvp-visual-workstation.md):** Transição da terminologia para Projetos e desenvolvimento do MVP Visual das 6 telas operacionais da Workstation.
 - **[Estudo de Caso 005](implementations/005-basecontroller-projetos-links-dinamicos.md):** Padrão WorkstationBaseController (`api/v1`), cadastramento de Projetos com múltiplos links categorizados (`ProjectLinks`), validações de URL e Soft/Hard Delete.
 - **[Estudo de Caso 006](implementations/006-expurgo-orders-rbac-paginacao-scroll-infinito.md):** Expurgo definitivo de Orders, blindagem RBAC por Claims JWT e paginação com Scroll Infinito (20 em 20).
+- **[Estudo de Caso 007](implementations/007-arquitetura-ingestao-links-projeto-autoingest.md):** Arquitetura de Ingestão por Links do Projeto, propriedade AutoIngest e Trigger Auto/Manual.
+- **[Estudo de Caso 008](implementations/008-redesenho-visual-premium-projetos.md):** Redesenho Visual Premium (Padrão Apple) na Gestão de Projetos e Banimento de Emojis.
+- **[Estudo de Caso 009](implementations/009-componente-linktypeselect-icones-lucide-hover.md):** Componente Customizado LinkTypeSelect e Correção de Contraste no Hover.
