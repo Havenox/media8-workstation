@@ -1,10 +1,10 @@
 import axios from 'axios';
-import type { Project, WorkstationAsset, TimecodeMarker, AuthResponse, LoginRequest, User, CreateUserRequest, MediaProcessingJob } from '../types';
+import type { Project, WorkstationAsset, TimecodeMarker, AuthResponse, LoginRequest, User, CreateUserRequest, MediaProcessingJob, ProjectLink } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export const api = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: `${API_BASE_URL}/api/v1`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -67,20 +67,55 @@ export const UserService = {
 
 export const ProjectService = {
   getProjects: async (userId?: string, role?: string): Promise<Project[]> => {
-    const response = await api.get<Project[]>('/Orders', {
-      params: { userId, role },
-    });
-    return response.data;
+    try {
+      const response = await api.get<Project[]>('/Projects', {
+        params: { userId, role },
+      });
+      return response.data;
+    } catch {
+      const legacyResponse = await api.get<Project[]>('/Orders', {
+        params: { userId, role },
+      });
+      return legacyResponse.data;
+    }
   },
 
   getProjectById: async (id: string): Promise<Project> => {
-    const response = await api.get<Project>(`/Orders/${id}`);
+    try {
+      const response = await api.get<Project>(`/Projects/${id}`);
+      return response.data;
+    } catch {
+      const legacyResponse = await api.get<Project>(`/Orders/${id}`);
+      return legacyResponse.data;
+    }
+  },
+
+  createProject: async (projectData: {
+    Title: string;
+    BriefingText?: string;
+    ExternalOrderReference?: string;
+    CreatedByUserId: string;
+    Links?: ProjectLink[];
+  }): Promise<Project> => {
+    const response = await api.post<Project>('/Projects', projectData);
     return response.data;
   },
 
-  createProject: async (project: Partial<Project>): Promise<Project> => {
-    const response = await api.post<Project>('/Orders', project);
+  updateProject: async (id: string, projectData: {
+    Title: string;
+    BriefingText?: string;
+    ExternalOrderReference?: string;
+    Status: string;
+    Links?: ProjectLink[];
+  }): Promise<Project> => {
+    const response = await api.put<Project>(`/Projects/${id}`, projectData);
     return response.data;
+  },
+
+  deleteProject: async (id: string, soft: boolean = true): Promise<void> => {
+    await api.delete(`/Projects/${id}`, {
+      params: { soft },
+    });
   },
 };
 
@@ -131,7 +166,6 @@ export const TimecodeService = {
 
 export const JobService = {
   getJobs: async (): Promise<MediaProcessingJob[]> => {
-    // Endpoint mock fallback when offline
     try {
       const response = await api.get<MediaProcessingJob[]>('/Jobs');
       return response.data;

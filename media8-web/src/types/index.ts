@@ -26,6 +26,13 @@ export interface CreateUserRequest {
   Role: 'Admin' | 'Editor';
 }
 
+export interface ProjectLink {
+  ProjectLinkId?: string;
+  ProjectId?: string;
+  Url: string;
+  LinkType: 'Folder' | 'Video' | 'Audio' | 'Image' | 'PDF' | 'Other';
+}
+
 export interface WorkstationAsset {
   AssetId: string;
   ProjectId: string;
@@ -78,12 +85,14 @@ export interface Project {
   BriefingText?: string;
   ExternalOrderReference?: string;
   Status: 'Draft' | 'InProduction' | 'InReview' | 'Completed' | 'Cancelled';
+  IsDeleted?: boolean;
   CreatedByUserId: string;
   CreatedAt: string;
   UpdatedAt: string;
   CreatedByUser?: User;
   AssignedEditors?: ProjectEditor[];
   Assets?: WorkstationAsset[];
+  Links?: ProjectLink[];
 }
 
 // Backwards compatibility alias
