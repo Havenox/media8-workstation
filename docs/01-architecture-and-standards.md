@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 2.5.0  
+> *Versão:* 2.6.0  
 > *Status:* Ativo  
 
 ---
@@ -30,14 +30,24 @@ O Dashboard e os contadores de metadados da aplicação consomem dados numérico
 1. `GET /api/v1/Projects/Stats`: Métricas consolidadas dos projetos.
 2. `GET /api/v1/Users/Stats`: Estatísticas numéricas dos usuários (`TotalUsers`, `AdminCount`, `EditorCount`).
 
-- **Desempenho Agregado:** Retorna o DTO `ProjectStatsDto` utilizando `CountAsync()` com `AsNoTracking()`, sem carregar entidades pesadas na memória.
+- **Desempenho Agregado:** Retorna os DTOs de estatísticas utilizando `CountAsync()` com `AsNoTracking()`, sem carregar entidades pesadas na memória.
 - **Isolamento RBAC por Claims JWT:** Admins obtêm a contagem de toda a produtora. Editores obtêm a contagem restrita aos projetos aos quais pertencem.
 
 ---
 
-## 4. Diretrizes de Design Visual Premium (Padrão Apple / Media 8 Design System)
+## 4. Pipeline de Processamento de Avatares & Segurança de Credenciais
 
-1. **Banimento Estrito de Emojis**:
+1. **Recorte Interativo 1:1 & Validação MIME**: O frontend valida o tipo de imagem e apresenta um modal interativo de recorte 1:1 (`AvatarCropModal.tsx`) para alinhamento e enquadramento de foto de perfil.
+2. **Compressão WebP Backend (200x200px @ 80%)**: O backend valida a imagem via `SixLabors.ImageSharp`, redimensiona/corta para 200x200px e salva em `/storage/avatars/{userId}.webp` com WebP @ 80% de qualidade.
+3. **Confirmação em 2 Passos com Countdown de 3s**: Redefinições administrativas de senha exigem a confirmação no modal `PasswordResetConfirmModal.tsx`, cujo botão de ação fica desabilitado por 3 segundos para evitar alterações acidentais.
+
+---
+
+## 5. Diretrizes de Design Visual Premium (Padrão Apple / Media 8 Design System)
+
+1. **Banimento Estrito de Emojis**: NENHUM emoji é permitido em botões, tabelas, modais, selects ou notificações da interface. Todos os elementos devem utilizar exclusivamente ícones vetoriais da biblioteca Lucide React.
+2. **Tipografia sem Maiúsculas Excessivas**: Tabelas e listagens devem utilizar cabeçalhos em caixa normal (`normal-case text-[#FFFBED] font-semibold text-xs tracking-tight`), evitando `uppercase` agressivo.
+3. **Linguagem Amigável sem Jargões de Dev**: Expressões técnicas como "RBAC" ou "Papel (RBAC)" são substituídas por "Função" ou "Função de Acesso".
    - Emojis unicode estão proibidos no código frontend.
    - Toda a representação de mídia, arquivos, status ou ações utiliza exclusivamente ícones vetoriais da biblioteca **Lucide React**.
 2. **Componentes Customizados & Dropdowns (`LinkTypeSelect` e `UserRoleSelect`)**:
