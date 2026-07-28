@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 1.8.0  
+> *Versão:* 1.9.0  
 > *Status:* Ativo  
 
 ---
@@ -61,16 +61,27 @@ O ecossistema impõe segregação estrita de privacidade por projetos e por pap�
    - Acumula a capacidade operacional total de um Editor em qualquer tela do Workstation.
 2. **🎬 Editor (Editor):**
    - Acesso estrito e delimitado **apenas aos Projetos para os quais foi formalmente atribuído** via tabela de junção `ProjectEditors`.
+   - Imposto diretamente na API `ProjectsController` através dos Claims do JWT Bearer Token (`User.FindFirstValue(ClaimTypes.NameIdentifier)` e `User.FindFirstValue(ClaimTypes.Role)`).
    - Isolamento total contra outros projetos do sistema.
 
 ---
 
-## 5. Padrões de Código & Regras de Ouro
+## 5. Padrões de Paginação & Carregamento (`PagedResultDto<T>`)
 
-### 5.1 Backend é LEI (PascalCase Rigoroso)
-- O backend .NET 10 estabelece os contratos JSON de entrada e saída.
-- Todos os payloads de API utilizam nativamente a convenção **PascalCase** (`options.JsonSerializerOptions.PropertyNamingPolicy = null`).
-- As interfaces TypeScript do frontend espelham os nomes exatos de propriedades (`ProjectId`, `BriefingText`, `TimecodeStart`, `AssetId`, `ProjectLinkId`) sem conversões para `camelCase`.
+1. **Estrutura Paginada Oficial**:
+   ```csharp
+   public class PagedResultDto<T>
+   {
+       public IEnumerable<T> Items { get; set; } = new List<T>();
+       public int Page { get; set; }
+       public int PageSize { get; set; }
+       public long TotalCount { get; set; }
+       public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
+       public bool HasNextPage => Page < TotalPages;
+   }
+   ```
+2. **Dashboard (`/`)**: Carrega limite fixo de 5 mais recentes (`GET /api/v1/Projects?limit=5`).
+3. **Página de Projetos (`/projetos`)**: Paginação em lotes de 20 (`pageSize=20`) integrada a **Scroll Infinito** via Intersection Observer.
 
 ---
 
@@ -81,3 +92,4 @@ O ecossistema impõe segregação estrita de privacidade por projetos e por pap�
 - **[Estudo de Caso 003](implementations/003-reestruturacao-frontend-alinhamento-app-v1.md):** Reestruturação do frontend `media8-web`, biblioteca ShadCN UI e alinhamento visual com `media8-app-v1`.
 - **[Estudo de Caso 004](implementations/004-arquitetura-projetos-mvp-visual-workstation.md):** Transição da terminologia para Projetos e desenvolvimento do MVP Visual das 6 telas operacionais da Workstation.
 - **[Estudo de Caso 005](implementations/005-basecontroller-projetos-links-dinamicos.md):** Padrão WorkstationBaseController (`api/v1`), cadastramento de Projetos com múltiplos links categorizados (`ProjectLinks`), validações de URL e Soft/Hard Delete.
+- **[Estudo de Caso 006](implementations/006-expurgo-orders-rbac-paginacao-scroll-infinito.md):** Expurgo definitivo de Orders, blindagem RBAC por Claims JWT e paginação com Scroll Infinito (20 em 20).
