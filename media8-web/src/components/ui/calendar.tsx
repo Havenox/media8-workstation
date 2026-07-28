@@ -1,67 +1,139 @@
-import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
-import { ptBR } from "date-fns/locale";
+import * as React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  format,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  isBefore,
+  startOfDay,
+} from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
+export interface CustomCalendarProps {
+  selected?: Date;
+  onSelect?: (date: Date | undefined) => void;
+  disabled?: (date: Date) => boolean;
+  className?: string;
+}
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+export function Calendar({
+  selected,
+  onSelect,
+  disabled,
+  className = '',
+}: CustomCalendarProps) {
+  const [currentMonth, setCurrentMonth] = React.useState<Date>(
+    selected || new Date()
+  );
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+  const today = startOfDay(new Date());
+
+  const handlePrevMonth = () => {
+    setCurrentMonth((prev) => subMonths(prev, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth((prev) => addMonths(prev, 1));
+  };
+
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Domingo
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
   return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      locale={ptBR}
-      className={cn("p-3 pointer-events-auto", className)}
-      classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-semibold text-foreground capitalize",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground transition-colors",
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell: "text-primary/60 rounded-md w-9 font-medium text-[0.8rem] uppercase",
-        row: "flex w-full mt-2",
-        cell: cn(
-          "h-9 w-9 text-center text-sm p-0 relative",
-          "[&:has([aria-selected].day-range-end)]:rounded-r-md",
-          "[&:has([aria-selected].day-outside)]:bg-primary/30",
-          "[&:has([aria-selected])]:bg-primary/10",
-          "first:[&:has([aria-selected])]:rounded-l-md",
-          "last:[&:has([aria-selected])]:rounded-r-md",
-          "focus-within:relative focus-within:z-20"
-        ),
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal text-foreground hover:bg-primary/10 hover:text-primary aria-selected:opacity-100 transition-colors"
-        ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground font-semibold",
-        day_today: "bg-primary/10 text-primary font-semibold border border-primary/30",
-        day_outside:
-          "day-outside text-muted-foreground/40 opacity-50 aria-selected:bg-primary/20 aria-selected:text-muted-foreground aria-selected:opacity-30",
-        day_disabled: "text-muted-foreground/30 opacity-50 cursor-not-allowed hover:bg-transparent",
-        day_range_middle: "aria-selected:bg-primary/10 aria-selected:text-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
-      components={{
-        IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
-      }}
-      {...props}
-    />
+    <div className={`p-4 bg-[#FFFBED] text-[#400404] w-[310px] select-none ${className}`}>
+      {/* Month & Nav Header */}
+      <div className="flex items-center justify-between pb-3 border-b border-[#400404]/15 mb-3">
+        <button
+          type="button"
+          onClick={handlePrevMonth}
+          className="p-1.5 rounded-lg text-[#400404] hover:bg-[#400404]/10 transition-colors cursor-pointer"
+          title="Mês Anterior"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        <span className="text-xs font-bold text-[#400404] capitalize tracking-wide">
+          {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+        </span>
+
+        <button
+          type="button"
+          onClick={handleNextMonth}
+          className="p-1.5 rounded-lg text-[#400404] hover:bg-[#400404]/10 transition-colors cursor-pointer"
+          title="Próximo Mês"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Weekdays Header */}
+      <div className="grid grid-cols-7 gap-1 text-center mb-2">
+        {weekDays.map((day) => (
+          <span
+            key={day}
+            className="text-[11px] font-bold text-[#5C1212] uppercase tracking-wider py-1"
+          >
+            {day}
+          </span>
+        ))}
+      </div>
+
+      {/* Days Grid */}
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {calendarDays.map((dayItem) => {
+          const isSelected = selected ? isSameDay(dayItem, selected) : false;
+          const isCurrentMonth = isSameMonth(dayItem, currentMonth);
+          const isToday = isSameDay(dayItem, today);
+          const isDisabled = disabled ? disabled(dayItem) : isBefore(startOfDay(dayItem), today);
+
+          let buttonClasses =
+            'h-9 w-9 text-xs font-bold rounded-lg flex items-center justify-center transition-all cursor-pointer mx-auto ';
+
+          if (isDisabled) {
+            buttonClasses += 'text-[#400404]/30 cursor-not-allowed bg-transparent ';
+          } else if (isSelected) {
+            buttonClasses +=
+              'bg-[#400404] text-[#FFFBED] shadow-md hover:bg-[#5C1212] scale-105 ';
+          } else if (isToday) {
+            buttonClasses +=
+              'bg-[#400404]/10 text-[#400404] border-2 border-[#400404] hover:bg-[#400404]/20 ';
+          } else if (!isCurrentMonth) {
+            buttonClasses += 'text-[#400404]/40 hover:bg-[#400404]/10 ';
+          } else {
+            buttonClasses +=
+              'text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] ';
+          }
+
+          return (
+            <button
+              key={dayItem.toISOString()}
+              type="button"
+              disabled={isDisabled}
+              onClick={() => {
+                if (!isDisabled && onSelect) {
+                  onSelect(dayItem);
+                }
+              }}
+              className={buttonClasses}
+            >
+              {format(dayItem, 'd')}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
-Calendar.displayName = "Calendar";
-
-export { Calendar };
