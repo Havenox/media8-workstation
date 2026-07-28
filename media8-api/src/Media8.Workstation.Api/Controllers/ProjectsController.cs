@@ -27,6 +27,7 @@ public class CreateProjectRequest
     public string? BriefingText { get; set; }
     public string? ExternalOrderReference { get; set; } // Chave fria / Alias do CRM (ex: #0254)
     public DateTime? Deadline { get; set; } // Prazo de entrega
+    public bool AutoIngest { get; set; } = true; // Ativa/desativa disparo automático de ingestão
     public Guid CreatedByUserId { get; set; }
     public List<ProjectLinkDto> Links { get; set; } = new();
 }
@@ -41,11 +42,12 @@ public class UpdateProjectRequest
     public string? ExternalOrderReference { get; set; }
     public DateTime? Deadline { get; set; }
     public string Status { get; set; } = "InProduction";
+    public bool AutoIngest { get; set; } = true;
     public List<ProjectLinkDto> Links { get; set; } = new();
 }
 
 /// <summary>
-/// Controlador oficial da API v1 para gerenciamento de Projetos e Links na Workstation.
+/// Controlador oficial da API v1 para gerenciamento de Projetos, Links e Disparo de Ingestão.
 /// Herda de WorkstationBaseController (Rota: api/v1/Projects).
 /// </summary>
 [Authorize]
@@ -65,7 +67,6 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         [FromQuery] string? status = null,
         [FromQuery] string? search = null)
     {
-        // 1. Obter permissões do usuário autenticado a partir dos Claims do JWT
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var roleClaim = User.FindFirstValue(ClaimTypes.Role);
 
@@ -77,13 +78,11 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
             .Where(p => !p.IsDeleted)
             .AsNoTracking();
 
-        // 2. Aplicar trava RBAC: se não for Admin, restringe aos projetos atribuídos ao editor
         if (roleClaim != "Admin")
         {
             query = query.Where(p => p.AssignedEditors.Any(e => e.UserId == currentUserId));
         }
 
-        // 3. Aplicar filtros de busca e status
         if (!string.IsNullOrWhiteSpace(status) && status.ToUpper() != "ALL")
         {
             query = query.Where(p => p.Status == status);
@@ -100,14 +99,12 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
 
         query = query.OrderByDescending(p => p.CreatedAt);
 
-        // 4. Se um limite fixo for solicitado (ex: limit=5 na Dashboard)
         if (limit.HasValue && limit.Value > 0)
         {
             var recentProjects = await query.Take(limit.Value).ToListAsync();
             return Ok(recentProjects);
         }
 
-        // 5. Caso contrário, retorna payload paginado oficial (PagedResultDto)
         var totalCount = await query.LongCountAsync();
         var safePage = page < 1 ? 1 : page;
         var safePageSize = pageSize < 1 ? 20 : (pageSize > 100 ? 100 : pageSize);
@@ -130,7 +127,6 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
 
     /// <summary>
     /// Retorna detalhes de um projeto por ID com seus links e mídias.
-    /// Validado contra permissões de acesso do usuário.
     /// </summary>
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<Project>> GetProjectById(Guid id)
@@ -148,7 +144,6 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
 
         if (project == null) return NotFound();
 
-        // Trava RBAC
         if (roleClaim != "Admin" && !project.AssignedEditors.Any(e => e.UserId == currentUserId))
         {
             return Forbid();
@@ -158,7 +153,7 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
     }
 
     /// <summary>
-    /// Cadastra um novo projeto manualmente com seus links categorizados e prazo de entrega.
+    /// Cadastra um novo projeto manualmente com seus links categorizados e disparo de ingestão se AutoIngest == true.
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<Project>> CreateProject([FromBody] CreateProjectRequest request)
@@ -168,13 +163,11 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
             return BadRequest(new { Message = "O título do projeto é obrigatório." });
         }
 
-        // Validação defensiva de data de entrega
         if (request.Deadline.HasValue && request.Deadline.Value.Date < DateTime.UtcNow.Date)
         {
             return BadRequest(new { Message = "O prazo de entrega não pode ser uma data passada." });
         }
 
-        // Validação defensiva de URLs nos links informados
         foreach (var link in request.Links)
         {
             if (string.IsNullOrWhiteSpace(link.Url) || !Uri.TryCreate(link.Url, UriKind.Absolute, out _))
@@ -190,6 +183,7 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
             BriefingText = request.BriefingText?.Trim(),
             ExternalOrderReference = request.ExternalOrderReference?.Trim(),
             Deadline = request.Deadline,
+            AutoIngest = request.AutoIngest,
             CreatedByUserId = request.CreatedByUserId,
             Status = "InProduction",
             IsDeleted = false,
@@ -212,11 +206,17 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         _context.Projects.Add(project);
         await _context.SaveChangesAsync();
 
+        // Se AutoIngest == true, aciona o disparo automático de ingestão para os links do projeto
+        if (project.AutoIngest && project.Links.Count > 0)
+        {
+            await TriggerIngestInternalAsync(project.ProjectId);
+        }
+
         return CreatedAtAction(nameof(GetProjectById), new { id = project.ProjectId }, project);
     }
 
     /// <summary>
-    /// Atualiza dados de um projeto existente e seus links.
+    /// Atualiza dados de um projeto existente, seus links e aciona disparo de ingestão para novos links se AutoIngest == true.
     /// </summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateProject(Guid id, [FromBody] UpdateProjectRequest request)
@@ -232,7 +232,6 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
             return BadRequest(new { Message = "O título do projeto é obrigatório." });
         }
 
-        // Validação defensiva de data de entrega
         if (request.Deadline.HasValue && request.Deadline.Value.Date < DateTime.UtcNow.Date)
         {
             return BadRequest(new { Message = "O prazo de entrega não pode ser uma data passada." });
@@ -243,9 +242,9 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         project.ExternalOrderReference = request.ExternalOrderReference?.Trim();
         project.Deadline = request.Deadline;
         project.Status = request.Status;
+        project.AutoIngest = request.AutoIngest;
         project.UpdatedAt = DateTime.UtcNow;
 
-        // Atualizar links
         _context.ProjectLinks.RemoveRange(project.Links);
         foreach (var linkDto in request.Links)
         {
@@ -263,7 +262,107 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         }
 
         await _context.SaveChangesAsync();
+
+        if (project.AutoIngest && project.Links.Count > 0)
+        {
+            await TriggerIngestInternalAsync(project.ProjectId);
+        }
+
         return Ok(project);
+    }
+
+    /// <summary>
+    /// Dispara o processo de ingestão dos links do projeto (Manual ou Automático).
+    /// Identifica links pendentes, cria o Asset e enfileira em MediaProcessingJobs sem duplicar mídias já ingeridas.
+    /// </summary>
+    [HttpPost("{id:guid}/TriggerIngest")]
+    public async Task<IActionResult> TriggerIngest(Guid id)
+    {
+        var project = await _context.Projects
+            .Include(p => p.Links)
+            .FirstOrDefaultAsync(p => p.ProjectId == id && !p.IsDeleted);
+
+        if (project == null) return NotFound();
+
+        var result = await TriggerIngestInternalAsync(id);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Método interno atômico que varre os links e gera tarefas de ingestão evitando duplicidades.
+    /// </summary>
+    private async Task<object> TriggerIngestInternalAsync(Guid projectId)
+    {
+        var links = await _context.ProjectLinks
+            .Where(l => l.ProjectId == projectId)
+            .ToListAsync();
+
+        var existingAssetUrls = await _context.WorkstationAssets
+            .Where(a => a.ProjectId == projectId)
+            .Select(a => a.ExternalSourceUrl)
+            .ToListAsync();
+
+        var existingAssetUrlSet = new HashSet<string>(existingAssetUrls);
+
+        int enqueuedCount = 0;
+        int skippedCount = 0;
+
+        foreach (var link in links)
+        {
+            if (existingAssetUrlSet.Contains(link.Url))
+            {
+                skippedCount++;
+                continue; // Evita ingestão duplicada
+            }
+
+            // Extrai um nome legível para a mídia a partir da URL
+            var urlFileName = Path.GetFileName(new Uri(link.Url).AbsolutePath);
+            if (string.IsNullOrWhiteSpace(urlFileName) || urlFileName == "/")
+            {
+                urlFileName = $"Media_{link.LinkType}_{Guid.NewGuid().ToString()[..6]}";
+            }
+
+            var asset = new WorkstationAsset
+            {
+                AssetId = Guid.NewGuid(),
+                ProjectId = projectId,
+                Title = $"{link.LinkType} - {urlFileName}",
+                OriginalFileName = urlFileName,
+                ExternalSourceUrl = link.Url,
+                Status = "Pending",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.WorkstationAssets.Add(asset);
+
+            var job = new MediaProcessingJob
+            {
+                JobId = Guid.NewGuid(),
+                AssetId = asset.AssetId,
+                JobType = "IngestDownload",
+                Status = "Pending",
+                Priority = 10,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.MediaProcessingJobs.Add(job);
+            enqueuedCount++;
+            existingAssetUrlSet.Add(link.Url);
+        }
+
+        if (enqueuedCount > 0)
+        {
+            await _context.SaveChangesAsync();
+        }
+
+        return new
+        {
+            ProjectId = projectId,
+            EnqueuedCount = enqueuedCount,
+            SkippedCount = skippedCount,
+            TotalLinks = links.Count
+        };
     }
 
     /// <summary>

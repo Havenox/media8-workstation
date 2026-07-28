@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Media8.Workstation.Domain.Entities;
 
 /// <summary>
@@ -11,6 +13,7 @@ public class Project
     public string? ExternalOrderReference { get; set; } // Chave fria / Alias do CRM (ex: #0254 ou ORD-9981)
     public DateTime? Deadline { get; set; } // Prazo de Entrega do Projeto
     public string Status { get; set; } = "InProduction"; // "Draft", "InProduction", "InReview", "Completed", "Cancelled"
+    public bool AutoIngest { get; set; } = true; // Ingestão automática ativada por padrão ao registrar links
     public bool IsDeleted { get; set; } = false; // Suporte a Soft Delete
     public Guid CreatedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -32,6 +35,7 @@ public class ProjectEditor
     public Guid UserId { get; set; }
     public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
 
+    [JsonIgnore]
     public Project Project { get; set; } = null!;
     public User User { get; set; } = null!;
 }

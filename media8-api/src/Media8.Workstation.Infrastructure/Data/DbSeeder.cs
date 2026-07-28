@@ -13,7 +13,7 @@ public static class DbSeeder
     {
         try
         {
-            // Create Projects table if missing
+            // 1. Create Projects table if missing
             await dbContext.Database.ExecuteSqlRawAsync(@"
                 CREATE TABLE IF NOT EXISTS ""Projects"" (
                     ""ProjectId"" uuid NOT NULL CONSTRAINT ""PK_Projects"" PRIMARY KEY,
@@ -22,6 +22,7 @@ public static class DbSeeder
                     ""ExternalOrderReference"" character varying(100) NULL,
                     ""Deadline"" timestamp with time zone NULL,
                     ""Status"" character varying(50) NOT NULL DEFAULT 'InProduction',
+                    ""AutoIngest"" boolean NOT NULL DEFAULT true,
                     ""IsDeleted"" boolean NOT NULL DEFAULT false,
                     ""CreatedByUserId"" uuid NOT NULL CONSTRAINT ""FK_Projects_Users_CreatedByUserId"" REFERENCES ""Users"" (""UserId"") ON DELETE RESTRICT,
                     ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -29,14 +30,15 @@ public static class DbSeeder
                 );
             ");
 
-            // Ensure missing columns on Projects table if created earlier
+            // 2. Ensure missing columns on Projects table if created earlier
             await dbContext.Database.ExecuteSqlRawAsync(@"
                 ALTER TABLE ""Projects"" ADD COLUMN IF NOT EXISTS ""ExternalOrderReference"" character varying(100) NULL;
                 ALTER TABLE ""Projects"" ADD COLUMN IF NOT EXISTS ""Deadline"" timestamp with time zone NULL;
+                ALTER TABLE ""Projects"" ADD COLUMN IF NOT EXISTS ""AutoIngest"" boolean NOT NULL DEFAULT true;
                 ALTER TABLE ""Projects"" ADD COLUMN IF NOT EXISTS ""IsDeleted"" boolean NOT NULL DEFAULT false;
             ");
 
-            // Create ProjectEditors table if missing
+            // 3. Create ProjectEditors table if missing
             await dbContext.Database.ExecuteSqlRawAsync(@"
                 CREATE TABLE IF NOT EXISTS ""ProjectEditors"" (
                     ""ProjectEditorId"" uuid NOT NULL CONSTRAINT ""PK_ProjectEditors"" PRIMARY KEY,
@@ -46,7 +48,7 @@ public static class DbSeeder
                 );
             ");
 
-            // Create ProjectLinks table if missing
+            // 4. Create ProjectLinks table if missing
             await dbContext.Database.ExecuteSqlRawAsync(@"
                 CREATE TABLE IF NOT EXISTS ""ProjectLinks"" (
                     ""ProjectLinkId"" uuid NOT NULL CONSTRAINT ""PK_ProjectLinks"" PRIMARY KEY,
@@ -57,9 +59,20 @@ public static class DbSeeder
                 );
             ");
 
-            // Ensure WorkstationAssets table uses ProjectId
+            // 5. Ensure WorkstationAssets table uses ProjectId and drop NOT NULL constraint from legacy OrderId
             await dbContext.Database.ExecuteSqlRawAsync(@"
                 ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""ProjectId"" uuid REFERENCES ""Projects""(""ProjectId"") ON DELETE CASCADE;
+                
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'WorkstationAssets' AND column_name = 'OrderId'
+                    ) THEN
+                        ALTER TABLE ""WorkstationAssets"" ALTER COLUMN ""OrderId"" DROP NOT NULL;
+                    END IF;
+                END $$;
             ");
 
             Console.WriteLine("[DbSeeder] Database Schema successfully verified and updated.");

@@ -71,10 +71,11 @@ public class ProjectsControllerTests
             Title = "Campanha Institucional 2026",
             BriefingText = "Vídeo institucional de 60 segundos.",
             ExternalOrderReference = "ORD-9981",
+            AutoIngest = false,
             CreatedByUserId = adminId,
             Links = new List<ProjectLinkDto>
             {
-                new ProjectLinkDto { Url = "https://drive.google.com/drive/folders/test", LinkType = "Folder" }
+                new ProjectLinkDto { Url = "https://drive.google.com/file/d/testvideo.mp4", LinkType = "Video" }
             }
         };
 
@@ -85,10 +86,52 @@ public class ProjectsControllerTests
         var actionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
         var createdProject = Assert.IsType<Project>(actionResult.Value);
         Assert.Equal("Campanha Institucional 2026", createdProject.Title);
+        Assert.False(createdProject.AutoIngest);
         Assert.Single(createdProject.Links);
 
         var dbProject = await context.Projects.Include(p => p.Links).FirstOrDefaultAsync(p => p.ProjectId == createdProject.ProjectId);
         Assert.NotNull(dbProject);
         Assert.Equal("Campanha Institucional 2026", dbProject.Title);
+    }
+
+    [Fact]
+    public async Task TriggerIngest_EnqueuesNewMediaProcessingJobs()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+        var adminId = Guid.NewGuid();
+        var controller = CreateControllerWithUserClaims(context, adminId, "Admin");
+
+        var project = new Project
+        {
+            ProjectId = Guid.NewGuid(),
+            Title = "Projeto Teste Trigger Ingest",
+            AutoIngest = false,
+            CreatedByUserId = adminId
+        };
+        project.Links.Add(new ProjectLink
+        {
+            ProjectLinkId = Guid.NewGuid(),
+            ProjectId = project.ProjectId,
+            Url = "https://drive.google.com/file/d/video_camera_a.mp4",
+            LinkType = "Video"
+        });
+
+        context.Projects.Add(project);
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await controller.TriggerIngest(project.ProjectId);
+
+        // Assert
+        var actionResult = Assert.IsType<OkObjectResult>(result);
+        Assert.NotNull(actionResult.Value);
+
+        var assets = await context.WorkstationAssets.Where(a => a.ProjectId == project.ProjectId).ToListAsync();
+        Assert.Single(assets);
+
+        var jobs = await context.MediaProcessingJobs.Where(j => j.AssetId == assets[0].AssetId).ToListAsync();
+        Assert.Single(jobs);
+        Assert.Equal("IngestDownload", jobs[0].JobType);
     }
 }
