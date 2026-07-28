@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 2.4.0  
+> *Versão:* 2.5.0  
 > *Status:* Ativo  
 
 ---
@@ -19,15 +19,16 @@ O **Media 8 | Workstation** segue a política de **Zero-Hardcode**. O projeto **
 
 A navegação da estação PAM utiliza rotas declarativas baseadas em URLs reais:
 - **Layout Shell Persistente (`AppLayout.tsx`)**: O **Sidebar** e o **Header** permanecem fixos e montados continuamente no DOM. Aparelhos de busca, perfil de usuário e atalhos não sofrem re-renders desnecessários.
-- **Renderização Dinâmica do Corpo (`<Outlet />`)**: Apenas o container central de conteúdo (`<main>`) é atualizado dinamicamente conforme a rota ativa (`/dashboard`, `/projects`, `/workstation/:projectId`, `/jobs`, `/users`, `/storage`).
+- **Renderização Dinâmica do Corpo (`<Outlet />`)**: Apenas o container central de conteúdo (`<main>`) é atualizado dinamicamente conforme a rota ativa (`/` (Dashboard), `/projects`, `/workstation/:projectId`, `/jobs`, `/users`, `/settings`).
 - **Nginx SPA Fallback**: Configuração da instrução `try_files $uri $uri/ /index.html;` no Nginx do container Docker, garantindo recarregamento via `F5` e Deep Linking de qualquer rota sem erro 404.
 
 ---
 
-## 3. Endpoint Dedicado de Estatísticas & Métricas (`GET /api/v1/Projects/Stats`)
+## 3. Endpoints Dedicados de Estatísticas & Métricas (`GET /api/v1/Projects/Stats` & `GET /api/v1/Users/Stats`)
 
-O Dashboard consome as estatísticas consolidadas da estação a partir de um endpoint dedicado de metadados agregados:
-`GET /api/v1/Projects/Stats`
+O Dashboard e os contadores de metadados da aplicação consomem dados numéricos agregados de endpoints dedicados:
+1. `GET /api/v1/Projects/Stats`: Métricas consolidadas dos projetos.
+2. `GET /api/v1/Users/Stats`: Estatísticas numéricas dos usuários (`TotalUsers`, `AdminCount`, `EditorCount`).
 
 - **Desempenho Agregado:** Retorna o DTO `ProjectStatsDto` utilizando `CountAsync()` com `AsNoTracking()`, sem carregar entidades pesadas na memória.
 - **Isolamento RBAC por Claims JWT:** Admins obtêm a contagem de toda a produtora. Editores obtêm a contagem restrita aos projetos aos quais pertencem.
