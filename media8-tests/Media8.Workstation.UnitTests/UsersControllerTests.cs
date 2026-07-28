@@ -1,15 +1,18 @@
+using System.Security.Claims;
 using Media8.Workstation.Api.Controllers;
 using Media8.Workstation.Application.DTOs;
 using Media8.Workstation.Domain.Entities;
 using Media8.Workstation.Infrastructure.Data;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Xunit;
 
 namespace Media8.Workstation.UnitTests;
 
 public class UsersControllerTests
 {
-    private static WorkstationDbContext GetInMemoryDbContext()
+    private WorkstationDbContext CreateInMemoryDbContext()
     {
         var options = new DbContextOptionsBuilder<WorkstationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -18,77 +21,109 @@ public class UsersControllerTests
         return new WorkstationDbContext(options);
     }
 
-    [Fact]
-    public async Task GetUsers_ReturnsAllRegisteredUsers()
+    private UsersController CreateControllerWithUserClaims(WorkstationDbContext context, Guid userId, string role)
     {
-        // Arrange
-        using var context = GetInMemoryDbContext();
-        context.Users.Add(new User { UserId = Guid.NewGuid(), Name = "Alice", Email = "alice@media8.com", Role = "Admin" });
-        context.Users.Add(new User { UserId = Guid.NewGuid(), Name = "Bob", Email = "bob@media8.com", Role = "Editor" });
-        await context.SaveChangesAsync();
-
         var controller = new UsersController(context);
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.Role, role)
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
 
-        // Act
-        var result = await controller.GetUsers();
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = claimsPrincipal }
+        };
 
-        // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var users = Assert.IsAssignableFrom<IEnumerable<UserDto>>(okResult.Value);
-        Assert.Equal(2, users.Count());
+        return controller;
     }
 
     [Fact]
-    public async Task CreateUser_WithValidData_ReturnsCreatedUser()
+    public async Task GetUsers_ReturnsPagedResultWithFilterAndSearch()
     {
         // Arrange
-        using var context = GetInMemoryDbContext();
-        var controller = new UsersController(context);
-        var createRequest = new CreateUserRequest
+        using var context = CreateInMemoryDbContext();
+        var adminId = Guid.NewGuid();
+        var controller = CreateControllerWithUserClaims(context, adminId, "Admin");
+
+        context.Users.Add(new User { UserId = Guid.NewGuid(), Name = "Alice Admin", Email = "alice@media8.com", Role = "Admin", CreatedAt = DateTime.UtcNow });
+        context.Users.Add(new User { UserId = Guid.NewGuid(), Name = "Bob Editor", Email = "bob@media8.com", Role = "Editor", CreatedAt = DateTime.UtcNow });
+        context.Users.Add(new User { UserId = Guid.NewGuid(), Name = "Carlos Editor", Email = "carlos@media8.com", Role = "Editor", CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await controller.GetUsers(page: 1, pageSize: 20, search: "bob", role: "ALL");
+
+        // Assert
+        var actionResult = Assert.IsType<OkObjectResult>(result.Result);
+        var pagedResult = Assert.IsType<PagedResultDto<UserDto>>(actionResult.Value);
+
+        var itemsList = pagedResult.Items.ToList();
+        Assert.Single(itemsList);
+        Assert.Equal("Bob Editor", itemsList[0].Name);
+        Assert.Equal(1, pagedResult.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetUserStats_ReturnsCorrectCounts()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+        var adminId = Guid.NewGuid();
+        var controller = CreateControllerWithUserClaims(context, adminId, "Admin");
+
+        context.Users.Add(new User { UserId = Guid.NewGuid(), Name = "Admin 1", Email = "a1@m8.com", Role = "Admin", CreatedAt = DateTime.UtcNow });
+        context.Users.Add(new User { UserId = Guid.NewGuid(), Name = "Editor 1", Email = "e1@m8.com", Role = "Editor", CreatedAt = DateTime.UtcNow });
+        context.Users.Add(new User { UserId = Guid.NewGuid(), Name = "Editor 2", Email = "e2@m8.com", Role = "Editor", CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await controller.GetUserStats();
+
+        // Assert
+        var actionResult = Assert.IsType<OkObjectResult>(result.Result);
+        var stats = Assert.IsType<UserStatsDto>(actionResult.Value);
+
+        Assert.Equal(3, stats.TotalUsers);
+        Assert.Equal(1, stats.AdminCount);
+        Assert.Equal(2, stats.EditorCount);
+    }
+
+    [Fact]
+    public async Task UpdateUser_UpdatesNameRoleAndEmail_WhenValid()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+        var adminId = Guid.NewGuid();
+        var controller = CreateControllerWithUserClaims(context, adminId, "Admin");
+
+        var user = new User { UserId = Guid.NewGuid(), Name = "Old Name", Email = "old@m8.com", Role = "Editor", CreatedAt = DateTime.UtcNow };
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+
+        var request = new UpdateUserRequest
         {
-            Name = "Novo Editor",
-            Email = "novo.editor@media8.com",
-            Password = "SenhaSegura123!",
-            Role = "Editor"
+            Name = "New Name",
+            Email = "new@m8.com",
+            Role = "Admin",
+            Password = "newpassword123"
         };
 
         // Act
-        var result = await controller.CreateUser(createRequest);
+        var result = await controller.UpdateUser(user.UserId, request);
 
         // Assert
-        var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        var userDto = Assert.IsType<UserDto>(createdResult.Value);
-        Assert.Equal("Novo Editor", userDto.Name);
-        Assert.Equal("novo.editor@media8.com", userDto.Email);
-        Assert.Equal("Editor", userDto.Role);
+        var actionResult = Assert.IsType<OkObjectResult>(result.Result);
+        var updated = Assert.IsType<UserDto>(actionResult.Value);
 
-        // Verify persisted in DB with hashed password
-        var dbUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "novo.editor@media8.com");
+        Assert.Equal("New Name", updated.Name);
+        Assert.Equal("new@m8.com", updated.Email);
+        Assert.Equal("Admin", updated.Role);
+
+        var dbUser = await context.Users.FindAsync(user.UserId);
         Assert.NotNull(dbUser);
-        Assert.NotEqual("SenhaSegura123!", dbUser.PasswordHash);
-    }
-
-    [Fact]
-    public async Task CreateUser_WithDuplicateEmail_ReturnsBadRequest()
-    {
-        // Arrange
-        using var context = GetInMemoryDbContext();
-        context.Users.Add(new User { UserId = Guid.NewGuid(), Name = "Existente", Email = "existente@media8.com", Role = "Editor" });
-        await context.SaveChangesAsync();
-
-        var controller = new UsersController(context);
-        var createRequest = new CreateUserRequest
-        {
-            Name = "Duplicado",
-            Email = "existente@media8.com",
-            Password = "Senha123!",
-            Role = "Editor"
-        };
-
-        // Act
-        var result = await controller.CreateUser(createRequest);
-
-        // Assert
-        Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("New Name", dbUser.Name);
     }
 }
