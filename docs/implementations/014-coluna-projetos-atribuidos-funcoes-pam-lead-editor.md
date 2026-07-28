@@ -1,60 +1,58 @@
-# Estudo de Caso 014: Coluna "Projetos Atribuídos", Atribuição Múltipla com Funções PAM & Lead Editor
+# 014 - Gestão de Usuários e Projetos: Coluna Projetos Atribuídos, Funções PAM & Lead Editor
 
-> **Status**: Concluído  
-> **Data**: 2026-07-28  
-> **Autor**: Antigravity AI  
-> **Versão**: 2.9.0  
+**Autor:** Eduardo Nascimento (Havenox)  
+**Data:** 28/07/2026  
 
 ---
 
-## 🎯 1. Contexto & Motivação
+## 🚀 Desafio de Engenharia
 
-1. **Restauração da Coluna "Projetos Atribuídos"**:
-   - A coluna de visualização de atribuição de projetos na tabela de usuários foi restaurada.
-   - **Regra de Negócio Refinada**: A coluna exibe a contagem exata e real de atribuições explícitas (ex: `0 Projetos`, `1 Projeto`, `3 Projetos`), tanto para **Admins** quanto para **Editores**.
-   - O privilégio de **Admin** confere acesso de gerenciamento global na plataforma PAM, mas **não implica estar vinculado como editor/responsável de um projeto**. Se um Admin não for atribuído como editor de nenhum projeto, exibirá `0 Projetos`.
-
-2. **Editor Responsável (Lead Editor) & Funções da Produção (Assignment Roles)**:
-   - Todo projeto possui **1 Editor Responsável (Lead Editor)** obrigatório.
-   - A atribuição de editores a projetos suporta funções específicas da produção audiovisual:
-     - `General` $\rightarrow$ Edição Geral / Montagem
-     - `Decoupage` $\rightarrow$ Decoupagem & Seleção de Takes
-     - `AudioTreatment` $\rightarrow$ Tratamento de Áudio & Mixagem
-     - `ColorGrading` $\rightarrow$ Color Grading & Correção de Cor
-     - `MotionGraphics` $\rightarrow$ Motion Graphics & VFX
-     - `Reviewer` $\rightarrow$ Revisão & Controle de Qualidade (QC)
+No modelo legado da estação PAM Media 8 Workstation, a coluna de atribuição de projetos exibia a string genérica "Acesso Global (Todos)" para Administradores e a contagem simples para Editores. Essa abordagem continha duas limitações arquiteturais:
+1. **Distorção de Responsabilidade**: Ser Administrador confere acesso de gerenciamento global a todas as áreas da plataforma, porém **não implica estar atribuído como responsável ou editor de um projeto de edição específico**. Uma Admin (como Shaiany) sem projetos sob sua responsabilidade exibia erroneamente "Acesso Global", dificultando o acompanhamento real das atribuições da equipe.
+2. **Atribuição Simples sem Escopo de Produção**: A vinculação de editores era binária (atribuído / não atribuído), sem distinção de quem é o **Editor Responsável (Lead Editor)** pelo projeto nem da **função específica da produção** (Decoupagem, Tratamento de Áudio, Color Grading, Motion Graphics ou Revisão QC).
 
 ---
 
-## 🛠️ 2. Arquitetura da Solução
+## 🧠 Estratégia da Solução
 
-### 2.1 Backend (.NET 10 & EF Core)
-- **Modelos de Domínio (`Project.cs` & `ProjectEditor.cs`)**:
-  - `Project.cs`: Adicionadas propriedades `LeadUserId` (`Guid?`) e navegação `LeadUser`.
-  - `ProjectEditor.cs`: Adicionadas propriedades `AssignmentRole` (`string`, default `"General"`) e `IsLead` (`bool`).
-- **Migração Dinâmica (`DbSeeder.cs`)**:
-  - Adicionadas instruções `ALTER TABLE "Projects" ADD COLUMN IF NOT EXISTS "LeadUserId" uuid;` e `ALTER TABLE "ProjectEditors" ADD COLUMN IF NOT EXISTS "AssignmentRole" text; ALTER TABLE "ProjectEditors" ADD COLUMN IF NOT EXISTS "IsLead" boolean;`.
+1. **Restauração da Coluna "Projetos Atribuídos" com Contagem Exata**:
+   - A coluna de usuários foi atualizada para exibir exclusivamente a quantidade real de projetos em que o usuário está explicitamente atribuído (`0 Projetos`, `1 Projeto`, `3 Projetos`), independente do seu papel no sistema (Admin ou Editor).
+
+2. **Arquitetura de Atribuições com 1 Lead Editor e Funções PAM**:
+   - **Lead Editor Obrigatório**: Todo projeto passa a ter obrigatoriamente 1 Editor Responsável (`LeadUserId`). A gravação de um projeto auto-atribui o Lead Editor na junção `ProjectEditor` com a flag `IsLead = true` e função `General`.
+   - **Funções Específicas da Atribuição (`AssignmentRole`)**: Editores adicionais vinculados a um projeto recebem funções operacionais (`General`, `Decoupage`, `AudioTreatment`, `ColorGrading`, `MotionGraphics`, `Reviewer`).
+
+---
+
+## 🛠️ Implementação Técnica
+
+### Backend (.NET 10 / C# 13 & EF Core)
+- **`Project.cs` & `ProjectEditor.cs`**:
+  - Adicionada a propriedade `LeadUserId` (`Guid?`) e a navegação `LeadUser` em `Project.cs`.
+  - Adicionadas as propriedades `AssignmentRole` (`string`, default `"General"`) e `IsLead` (`bool`, default `false`) na entidade `ProjectEditor.cs`.
+- **`DbSeeder.cs`**:
+  - Adicionadas instruções SQL nativas idempotentes (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`) para migração dinâmica sem quebra em bancos de dados PostgreSQL já inicializados.
 - **`UsersController.cs`**:
-  - Calculada a contagem real `AssignedProjectsCount` no DTO `UserDto` via subconsulta no Entity Framework Core.
+  - Projeção de `UserDto` atualizada para mapear a propriedade `AssignedProjectsCount` contando via EF Core os registros ativos em `ProjectEditors` onde o projeto não está deletado.
 - **`ProjectsController.cs`**:
-  - Criação e atualização de projetos sincronizam automaticamente o `LeadUserId` como `ProjectEditor` com `IsLead = true` e `AssignmentRole = "General"`, juntamente com os editores adicionais.
+  - Atualizadas as rotas `CreateProject` e `UpdateProject` para processar `LeadUserId` e `AssignedEditors`, persistindo o Lead Editor e as funções PAM de cada integrante da produção.
 
-### 2.2 Frontend (React SPA)
-- **`types/index.ts`**: Atualizadas as interfaces `User`, `ProjectEditor` e `Project`.
-- **`UsersPage.tsx`**: Adicionada a coluna **"Projetos Atribuídos"** exibindo `{u.AssignedProjectsCount ?? 0} {u.AssignedProjectsCount === 1 ? 'Projeto' : 'Projetos'}` em fonte mono e caixa normal.
-
----
-
-## 🧪 3. Validação e Qualidade
-
-1. **Suíte de Testes Unitários**: 100% de aprovação (10/10 testes aprovados no .NET 10).
-2. **Compilação SPA**: `npm --prefix media8-web run build` finalizado com sucesso em 5.8s.
-3. **Containers Docker**: Recompilados e iniciados com sucesso via `docker compose up -d --build`.
+### Frontend (React SPA & TypeScript)
+- **`types/index.ts`**:
+  - Adicionadas as propriedades `AssignedProjectsCount` em `User`, `AssignmentRole` e `IsLead` em `ProjectEditor`, e `LeadUserId` em `Project`.
+- **`UsersPage.tsx`**:
+  - Reinserida a coluna **"Projetos Atribuídos"** no cabeçalho e corpo da tabela de usuários, utilizando tipografia em fonte mono e estilo normal-case.
+- **`App.tsx`**:
+  - Corrigida a importação de `useCallback` no cabeçalho do arquivo, zerando o aviso runtime de `ReferenceError`.
 
 ---
 
-## 📜 4. Histórico de Commits Atômicos
+## 🎯 Impacto e Resultado
 
-- `feat(api): adiciona LeadUserId em Project, AssignmentRole/IsLead em ProjectEditor e AssignedProjectsCount em UserDto`
-- `feat(front): restaura coluna Projetos Atribuidos na tabela de usuarios com contagem real`
-- `docs: cria estudo de caso 014 e atualiza matriz arquitetural v2.9.0`
+* **Transparência de Atribuições**: A tabela de usuários reflete com 100% de precisão o volume real de projetos sob responsabilidade de cada integrante da produtora (Admins e Editores).
+* **Escalabilidade da Produção Audiovisual**: A Workstation PAM agora suporta a divisão de trabalho por especialidades (Decoupagem, Mixagem de Áudio, Color Grading, VFX e Revisão QC), mantendo sempre 1 Lead Editor como responsável primário.
+* **Estabilidade e Qualidade**: 100% dos testes unitários no backend (10/10) e a compilação do bundle frontend Vite finalizados sem nenhum erro ou aviso.
+
+---
+
+**Nota do Desenvolvedor:** *A separação entre permissão de acesso global (RBAC) e atribuição operacional por projeto é um pilar essencial para sistemas PAM industriais. Garantir que a contagem de projetos reflita atribuições reais evita ambiguidades na alocação de equipe e abre caminho para métricas avançadas de fluxo de trabalho.*
