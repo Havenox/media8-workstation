@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 1.6.0  
+> *Versão:* 1.7.0  
 > *Status:* Ativo  
 
 ---
@@ -73,26 +73,16 @@ O ecossistema impõe segregação estrita de privacidade por projetos (Orders) e
 - Todos os payloads de API utilizam nativamente a convenção **PascalCase** (`options.JsonSerializerOptions.PropertyNamingPolicy = null`).
 - As interfaces TypeScript do frontend espelham os nomes exatos de propriedades (`OrderId`, `BriefingText`, `TimecodeStart`, `AssetId`) sem conversões para `camelCase`.
 
-### 4.2 Primary Constructors & Clean Architecture
-- Injeção de dependência no backend utilizando exclusivamente C# 13 Primary Constructors (`public class OrdersController(WorkstationDbContext context)`).
-- Separação em camadas desacopladas (`Domain`, `Application`, `Infrastructure`, `Api`, `Workers`).
-
-### 4.3 Defensive UI & Prevenção de Multi-submit
-- Botões de ação mutável no frontend são fisicamente desabilitados (`disabled={loading}`) durante requisições ativas.
-- Zero re-renders desnecessários usando estado derivado diretamente no corpo do componente.
-
-### 4.4 Identidade Visual Oficial (Vinho Profundo & Creme Suave)
-- **Cores Primárias**: Vinho Profundo (`#400404`), Vinho Quente (`#5C1212`), Vinho Vibrante (`#7B0A0A`) e Creme Suave (`#FFFBED`).
-- **Assets de Marca**: Utilização de logotipos WebP (`logo-media8-cream.webp`, `logo-media8-wine.webp`) e `favicon.ico`.
+### 4.2 Stack de Frontend & Design System (Tailwind v3 + ShadCN UI)
+- **Engine CSS**: Tailwind CSS v3 (`^3.4.17`), PostCSS (`^8.5.6`) e Autoprefixer (`^10.4.21`).
+- **Suíte de UI**: 51 Componentes ShadCN UI (`src/components/ui/`), Radix UI primitives, Framer Motion e Lucide Icons.
+- **Identidade Visual Oficial**: Vinho Profundo (`#400404`), Vinho Quente (`#5C1212`), Vinho Vibrante (`#7B0A0A`) e Creme Suave (`#FFFBED`).
 - **Estética Glassmorphism**: Cartões e painéis com desfoque de fundo (`backdrop-blur-xl`), bordas de 1px e tipografia limpa em `Inter`.
 
 ---
 
-## 5. Convenção de Nomenclatura de Pastas por Escopo (`media8-NOME`)
+## 5. Histórico de Estudos de Caso
 
-Todo microserviço, worker, suite de testes ou escopo do projeto que possua seu próprio container no `docker-compose.yml` ou represente uma camada independente do repositório deve obrigatoriamente iniciar o nome da pasta com o prefixo **`media8-NOME`**:
-
-- **Backend API:** `media8-api/`
-- **Frontend SPA (Web):** `media8-web/`
-- **Background Workers:** `media8-workers/`
-- **Suíte de Testes:** `media8-tests/`
+- **[Estudo de Caso 001](implementations/001-integracao-inicial-workstation-dotnet10.md):** Arquitetura inicial .NET 10, JWT e SignalR.
+- **[Estudo de Caso 002](implementations/002-credenciais-iniciais-admin-dotenv.md):** Injeção de credenciais de Admin via `.env` e Seeding dinâmico.
+- **[Estudo de Caso 003](implementations/003-reestruturacao-frontend-alinhamento-app-v1.md):** Reestruturação do frontend `media8-web`, correção do Tailwind CSS v3, biblioteca ShadCN UI e alinhamento visual com `media8-app-v1` (telas `print3` e `print4`).
