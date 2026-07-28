@@ -134,4 +134,33 @@ public class ProjectsControllerTests
         Assert.Single(jobs);
         Assert.Equal("IngestDownload", jobs[0].JobType);
     }
+
+    [Fact]
+    public async Task GetProjectStats_ReturnsCorrectConsolidatedCounts()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+        var adminId = Guid.NewGuid();
+        var controller = CreateControllerWithUserClaims(context, adminId, "Admin");
+
+        context.Projects.Add(new Project { ProjectId = Guid.NewGuid(), Title = "P1", Status = "InProduction", CreatedByUserId = adminId });
+        context.Projects.Add(new Project { ProjectId = Guid.NewGuid(), Title = "P2", Status = "InProduction", CreatedByUserId = adminId });
+        context.Projects.Add(new Project { ProjectId = Guid.NewGuid(), Title = "P3", Status = "InReview", CreatedByUserId = adminId });
+        context.Projects.Add(new Project { ProjectId = Guid.NewGuid(), Title = "P4", Status = "Completed", CreatedByUserId = adminId });
+        context.Projects.Add(new Project { ProjectId = Guid.NewGuid(), Title = "P5", Status = "Draft", IsDeleted = true, CreatedByUserId = adminId }); // Soft deleted, must be ignored
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await controller.GetProjectStats();
+
+        // Assert
+        var actionResult = Assert.IsType<OkObjectResult>(result.Result);
+        var stats = Assert.IsType<ProjectStatsDto>(actionResult.Value);
+
+        Assert.Equal(4, stats.TotalCount);
+        Assert.Equal(2, stats.InProductionCount);
+        Assert.Equal(1, stats.InReviewCount);
+        Assert.Equal(1, stats.CompletedCount);
+        Assert.Equal(0, stats.DraftCount);
+    }
 }

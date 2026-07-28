@@ -56,6 +56,43 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
     private readonly WorkstationDbContext _context = context;
 
     /// <summary>
+    /// Obtém os indicadores numéricos consolidados de estatísticas dos projetos (RBAC-enforced).
+    /// </summary>
+    [HttpGet("Stats")]
+    public async Task<ActionResult<ProjectStatsDto>> GetProjectStats()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var roleClaim = User.FindFirstValue(ClaimTypes.Role);
+        Guid.TryParse(userIdClaim, out var currentUserId);
+
+        var query = _context.Projects
+            .AsNoTracking()
+            .Where(p => !p.IsDeleted);
+
+        if (roleClaim != "Admin")
+        {
+            query = query.Where(p => p.AssignedEditors.Any(e => e.UserId == currentUserId));
+        }
+
+        var totalCount = await query.CountAsync();
+        var inProductionCount = await query.CountAsync(p => p.Status == "InProduction");
+        var inReviewCount = await query.CountAsync(p => p.Status == "InReview");
+        var completedCount = await query.CountAsync(p => p.Status == "Completed");
+        var draftCount = await query.CountAsync(p => p.Status == "Draft");
+        var cancelledCount = await query.CountAsync(p => p.Status == "Cancelled");
+
+        return Ok(new ProjectStatsDto
+        {
+            TotalCount = totalCount,
+            InProductionCount = inProductionCount,
+            InReviewCount = inReviewCount,
+            CompletedCount = completedCount,
+            DraftCount = draftCount,
+            CancelledCount = cancelledCount
+        });
+    }
+
+    /// <summary>
     /// Lista os projetos com suporte a paginação (20 em 20), filtros e limite para Dashboard.
     /// Impõe autorização estrita via JWT Claims: Admins visualizam tudo, Editores apenas projetos designados.
     /// </summary>
