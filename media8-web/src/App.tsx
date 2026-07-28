@@ -105,13 +105,15 @@ export function App() {
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []);
 
-  // Fetch Projects and Users
+  // Fetch Projects and Users for Dashboard & System Context
   const loadProjects = async () => {
     try {
-      const data = await ProjectService.getProjects();
-      if (data && data.length > 0) {
-        setProjects(data);
-        if (!activeProject) setActiveProject(data[0]);
+      const res = await ProjectService.getProjects({ limit: 5 });
+      const itemsList = Array.isArray(res) ? res : (res?.Items || []);
+
+      if (itemsList.length > 0) {
+        setProjects(itemsList);
+        if (!activeProject) setActiveProject(itemsList[0]);
       } else {
         setProjects(mockProjects);
         if (!activeProject) setActiveProject(mockProjects[0]);
@@ -179,10 +181,8 @@ export function App() {
 
       {activeTab === 'projects' && (
         <ProjectsPage
-          projects={projects}
           currentUser={currentUser}
           users={users}
-          onRefreshProjects={loadProjects}
           onOpenWorkstation={handleOpenWorkstationForProject}
         />
       )}

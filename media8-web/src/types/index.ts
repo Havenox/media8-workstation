@@ -36,7 +36,6 @@ export interface ProjectLink {
 export interface WorkstationAsset {
   AssetId: string;
   ProjectId: string;
-  OrderId?: string;
   Title: string;
   OriginalFileName: string;
   ExternalSourceUrl: string;
@@ -96,9 +95,14 @@ export interface Project {
   Links?: ProjectLink[];
 }
 
-// Backwards compatibility alias
-export type Order = Project;
-export type OrderEditor = ProjectEditor;
+export interface PagedResult<T> {
+  Items: T[];
+  Page: number;
+  PageSize: number;
+  TotalCount: number;
+  TotalPages: number;
+  HasNextPage: boolean;
+}
 
 export interface MediaProcessingJob {
   JobId: string;

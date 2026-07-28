@@ -1,5 +1,16 @@
 import axios from 'axios';
-import type { Project, WorkstationAsset, TimecodeMarker, AuthResponse, LoginRequest, User, CreateUserRequest, MediaProcessingJob, ProjectLink } from '../types';
+import type {
+  Project,
+  WorkstationAsset,
+  TimecodeMarker,
+  AuthResponse,
+  LoginRequest,
+  User,
+  CreateUserRequest,
+  MediaProcessingJob,
+  ProjectLink,
+  PagedResult,
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -66,28 +77,21 @@ export const UserService = {
 };
 
 export const ProjectService = {
-  getProjects: async (userId?: string, role?: string): Promise<Project[]> => {
-    try {
-      const response = await api.get<Project[]>('/Projects', {
-        params: { userId, role },
-      });
-      return response.data;
-    } catch {
-      const legacyResponse = await api.get<Project[]>('/Orders', {
-        params: { userId, role },
-      });
-      return legacyResponse.data;
-    }
+  // Retorna Projetos Paginados ou Limite para Dashboard
+  getProjects: async (params?: {
+    page?: number;
+    pageSize?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  }): Promise<PagedResult<Project> | Project[]> => {
+    const response = await api.get('/Projects', { params });
+    return response.data;
   },
 
   getProjectById: async (id: string): Promise<Project> => {
-    try {
-      const response = await api.get<Project>(`/Projects/${id}`);
-      return response.data;
-    } catch {
-      const legacyResponse = await api.get<Project>(`/Orders/${id}`);
-      return legacyResponse.data;
-    }
+    const response = await api.get<Project>(`/Projects/${id}`);
+    return response.data;
   },
 
   createProject: async (projectData: {
@@ -121,16 +125,9 @@ export const ProjectService = {
   },
 };
 
-// Compatibility Alias for legacy code
-export const OrderService = {
-  getOrders: ProjectService.getProjects,
-  getOrderById: ProjectService.getProjectById,
-  createOrder: ProjectService.createProject,
-};
-
 export const AssetService = {
-  getAssetsByOrder: async (orderId: string): Promise<WorkstationAsset[]> => {
-    const response = await api.get<WorkstationAsset[]>(`/Assets/Order/${orderId}`);
+  getAssetsByProject: async (projectId: string): Promise<WorkstationAsset[]> => {
+    const response = await api.get<WorkstationAsset[]>(`/Assets/Project/${projectId}`);
     return response.data;
   },
 
@@ -140,7 +137,7 @@ export const AssetService = {
   },
 
   ingestMedia: async (data: {
-    OrderId: string;
+    ProjectId: string;
     Title: string;
     ExternalSourceUrl: string;
     OriginalFileName: string;
