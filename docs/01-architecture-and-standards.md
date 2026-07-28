@@ -1,14 +1,14 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 1.4.0  
+> *Versão:* 1.5.0  
 > *Status:* Ativo  
 
 ---
 
 ## 1. Agnosticism de Ambiente & Banco de Dados Externo
 
-O **Media 8 | Workstation** segue a política de **Zero-Hardcode**. O projeto **não subir ou gerencia um container de banco de dados próprio no seu `docker-compose.yml`**. O banco de dados PostgreSQL é um recurso externo/centralizado da infraestrutura (acessível via `DB_HOST`, ex: `192.168.18.110`).
+O **Media 8 | Workstation** segue a política de **Zero-Hardcode**. O projeto **não sobe nem gerencia um container de banco de dados próprio no seu `docker-compose.yml`**. O banco de dados PostgreSQL é um recurso externo/centralizado da infraestrutura (acessível via `DB_HOST`, ex: `192.168.18.110`).
 
 - **Conexão Externa:** Todas as credenciais de conexão são injetadas via variáveis de ambiente no arquivo `.env` na raiz do repositório.
 - **Frontend Vite SPA:** URL base da API REST configurável via `VITE_API_BASE_URL` (padrão: `http://localhost:5000`).
@@ -44,17 +44,25 @@ Os arquivos de mídias físicas gerados pelos Workers são agrupados por **Order
 
 ---
 
-## 3. Modelo de Segurança & Controle de Acesso (RBAC)
+## 3. Modelo de Segurança, JWT & Controle de Acesso (RBAC)
 
 O ecossistema impõe segregação estrita de privacidade por projetos (Orders) e por papéis:
 
 1. **👑 Admin (Administrador):**
    - Possui privilégios globais de leitura, escrita e exclusão.
-   - Pode atribuir editores a Orders ou autoatribuir-se a qualquer projeto.
+   - Pode cadastrar novos usuários (`POST /api/users`), atribuir editores a Orders ou autoatribuir-se a qualquer projeto.
    - Acumula a capacidade operacional total de um Editor em qualquer tela do Workstation.
 2. **🎬 Editor (Editor):**
    - Acesso estrito e delimitado **apenas às Orders para as quais foi formalmente atribuído** via tabela de junção `OrderEditors`.
    - Isolamento total contra outros projetos do sistema.
+
+### 3.1 Seeding Dinâmico do Administrador Inicial
+- Não existem credenciais administrativas embutidas em código C#.
+- Durante a inicialização da API (`DbSeeder.cs`), o sistema consulta o PostgreSQL e, se não identificar nenhum usuário com o papel `Admin`, lê `INITIAL_ADMIN_EMAIL` e `INITIAL_ADMIN_PASSWORD` do `.env`, gera o hash com `PasswordHasher` e insere o primeiro Administrador no banco.
+
+### 3.2 Bloqueio Estrito de Acessos Anônimos
+- **Zero Formulários de Cadastro Anônimo:** A aplicação não permite autoregistro de usuários. O cadastramento de novos usuários é feito **exclusivamente por um Administrador** autenticado (`POST /api/users`).
+- **Guarda de Rotas SPA & API:** Usuários não autenticados visualizam apenas a tela de Login ("Entrar"). Todos os endpoints de negócio exigem o cabeçalho `Authorization: Bearer <token>`.
 
 ---
 
