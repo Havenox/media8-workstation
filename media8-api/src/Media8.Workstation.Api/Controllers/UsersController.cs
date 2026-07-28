@@ -159,6 +159,30 @@ public class UsersController(WorkstationDbContext context, IWebHostEnvironment e
         if (request.AvatarUrl != null)
         {
             user.AvatarUrl = request.AvatarUrl;
+
+            // Purge local .webp avatar file if switching to an external URL (http/https)
+            if (request.AvatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                request.AvatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                var storagePath = configuration["STORAGE_PATH"];
+                if (string.IsNullOrWhiteSpace(storagePath))
+                {
+                    storagePath = Directory.Exists("/storage") 
+                        ? "/storage" 
+                        : Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "media8-storage"));
+
+                    if (!Directory.Exists(storagePath))
+                    {
+                        storagePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "media8-storage"));
+                    }
+                }
+
+                var localAvatarFile = Path.Combine(storagePath, "avatars", $"{user.UserId}.webp");
+                if (System.IO.File.Exists(localAvatarFile))
+                {
+                    try { System.IO.File.Delete(localAvatarFile); } catch { /* ignore */ }
+                }
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(request.Password))
