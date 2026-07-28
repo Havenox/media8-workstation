@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 1.5.0  
+> *Versão:* 1.6.0  
 > *Status:* Ativo  
 
 ---
@@ -80,6 +80,11 @@ O ecossistema impõe segregação estrita de privacidade por projetos (Orders) e
 ### 4.3 Defensive UI & Prevenção de Multi-submit
 - Botões de ação mutável no frontend são fisicamente desabilitados (`disabled={loading}`) durante requisições ativas.
 - Zero re-renders desnecessários usando estado derivado diretamente no corpo do componente.
+
+### 4.4 Identidade Visual Oficial (Vinho Profundo & Creme Suave)
+- **Cores Primárias**: Vinho Profundo (`#400404`), Vinho Quente (`#5C1212`), Vinho Vibrante (`#7B0A0A`) e Creme Suave (`#FFFBED`).
+- **Assets de Marca**: Utilização de logotipos WebP (`logo-media8-cream.webp`, `logo-media8-wine.webp`) e `favicon.ico`.
+- **Estética Glassmorphism**: Cartões e painéis com desfoque de fundo (`backdrop-blur-xl`), bordas de 1px e tipografia limpa em `Inter`.
 
 ---
 
