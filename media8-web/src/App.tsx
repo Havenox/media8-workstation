@@ -26,7 +26,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ user, allowedRoles, children }) => {
   if (allowedRoles && !allowedRoles.includes(user.Role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
   return <>{children}</>;
 };
@@ -195,18 +195,18 @@ export function AppContent() {
           />
         }
       >
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route
-          path="/dashboard"
+          path="/"
           element={
             <DashboardPage
               projects={projects}
               currentUser={currentUser}
-              onNavigateTab={(tab) => navigate(`/${tab}`)}
+              onNavigateTab={(tab) => navigate(tab === 'dashboard' ? '/' : `/${tab}`)}
               onOpenWorkstation={handleOpenWorkstationForProject}
             />
           }
         />
+        <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route
           path="/projects"
           element={
@@ -254,7 +254,7 @@ export function AppContent() {
           }
         />
         <Route path="/storage" element={<SettingsPage currentUser={currentUser} />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   );

@@ -31,7 +31,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { id: 'dashboard', path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { id: 'projects', path: '/projects', icon: FolderKanban, label: 'Projetos' },
   { id: 'workstation', path: '/workstation', icon: Film, label: 'Workstation PAM' },
   { id: 'jobs', path: '/jobs', icon: Activity, label: 'Esteira de Ingestão' },
@@ -64,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       {/* Header */}
       <div className="p-4 flex items-center justify-between border-b border-[#5C1212]">
-        <div className="flex-1 cursor-pointer" onClick={() => navigate('/dashboard')}>
+        <div className="flex-1 cursor-pointer" onClick={() => navigate('/')}>
           {!collapsed && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -96,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
         {filteredNavItems.map((item) => {
           const isActive =
-            item.path === '/dashboard'
+            item.path === '/'
               ? currentPath === '/' || currentPath === '/dashboard'
               : currentPath.startsWith(item.path);
 
