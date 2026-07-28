@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 2.7.0  
+> *Versão:* 2.8.0  
 > *Status:* Ativo  
 
 ---
@@ -37,11 +37,12 @@ O Dashboard e os contadores de metadados da aplicação consomem dados numérico
 
 ---
 
-## 4. Pipeline de Processamento de Avatares & Segurança de Credenciais
+## 4. Pipeline de Processamento de Avatares, Expurgo de Disco & Segurança de Credenciais
 
-1. **Recorte Interativo 1:1 & Validação MIME**: O frontend valida o tipo de imagem e apresenta um modal interativo de recorte 1:1 (`AvatarCropModal.tsx`) para alinhamento e enquadramento de foto de perfil.
-2. **Compressão WebP Backend (200x200px @ 80%)**: O backend valida a imagem via `SixLabors.ImageSharp`, redimensiona/corta para 200x200px e salva em `/storage/avatars/{userId}.webp` com WebP @ 80% de qualidade.
-3. **Confirmação em 2 Passos com Countdown de 3s**: Redefinições administrativas de senha exigem a confirmação no modal `PasswordResetConfirmModal.tsx`, cujo botão de ação fica desabilitado por 3 segundos para evitar alterações acidentais.
+1. **Recorte Interativo 1:1 & Validação MIME**: O frontend valida o tipo de imagem e apresenta um modal interativo de recorte 1:1 (`AvatarCropModal.tsx`) com slider simétrico de zoom (-100 a +100) e botão de reset.
+2. **Input Sutil de URL Externa**: Modal de usuário apresenta caixa minimalista de URL com trava ativada por ícone de lápis interno (`Pencil`).
+3. **Compressão WebP & Expurgo Automático de Disco**: O backend grava fotos locais em `media8-storage/avatars/{userId}.webp` (WebP 200x200px @ 80%). Ao alternar um usuário para URL externa (`http://` ou `https://`), o backend executa `File.Delete` no arquivo `.webp` antigo em disco, evitando acúmulo de arquivos órfãos.
+4. **Confirmação em 2 Passos com Countdown de 3s**: Redefinições administrativas de senha exigem a confirmação no modal `PasswordResetConfirmModal.tsx`, cujo botão de ação fica desabilitado por 3 segundos para evitar alterações acidentais.
 
 ---
 

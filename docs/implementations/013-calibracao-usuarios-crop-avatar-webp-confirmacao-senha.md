@@ -1,61 +1,54 @@
-# Estudo de Caso 013: Calibração de Usuários (UX, Design System, Confirmação de Senha 3s & Fotos de Perfil com Crop 1:1 e WebP 200x200px em media8-storage)
+# Estudo de Caso 013: Calibração de Usuários (UX, Input Minimalista de URL com Lápis Interno, Expurgo de Arquivo Físico & Zoom Simétrico)
 
 > **Status**: Concluído  
 > **Data**: 2026-07-28  
 > **Autor**: Antigravity AI  
-> **Versão**: 2.7.0  
+> **Versão**: 2.8.0  
 
 ---
 
 ## 🎯 1. Contexto & Motivação
 
-Após os ajustes iniciais de paginação da tela de **Usuários**, foram identificados pontos cruciais de melhoria visual, usabilidade e infraestrutura de mídia:
-1. O rótulo no Sidebar ainda apresentava a string legada "Usuários & Atribuições".
-2. Os cabeçalhos da tabela estavam estilizados em caixa alta (`uppercase`), destoando dos padrões de design refinados da aplicação.
-3. Menções a jargões de desenvolvedor ("RBAC", "Papel (RBAC)") estavam expostos na interface.
-4. Redefinições administrativas de senha não possuíam uma confirmação de segurança com tempo de reflexão.
-5. Ausência de foto de perfil (avatar) e falha de servimento/persistência em disco por falta de uma pasta dedicada no repositório (`media8-storage/`) montada nos containers e servida centralizadamente pela API REST via Nginx.
+Após os ajustes iniciais de avatares WebP e armazenamento em `media8-storage/`, foram solicitados aprimoramentos adicionais de interface, sincronia e governança de armazenamento em disco:
+1. **Foto no Canto Superior Direito (Header)**: A miniatura do usuário logado não sincronizava instantaneamente ao alterar a foto e o `AvatarUrl` era descartado ao restaurar o `localStorage`.
+2. **Entrada Minimalista para URLs Externas de Imagem**: Desejo de colar links de CDNs (ex: Gravatar, Unsplash, S3) através de uma caixa sutil posicionada logo abaixo da caixa de avatar, com estilo desabilitado por padrão e destravada via botão de lápis interno (`Pencil`).
+3. **Purga Automática de Arquivo Físico em Disco**: Garantir que, ao trocar o avatar local de um usuário por um link de CDN externa ou novo arquivo, o arquivo físico `.webp` antigo em `media8-storage/avatars/{userId}.webp` seja automaticamente excluído para economizar espaço em disco.
+4. **Controles Simétricos de Zoom (-100 a +100) & Botão Reset no Recorte**: Melhoria da usabilidade do modal de crop (`AvatarCropModal.tsx`), adicionando slider centrado em 0 e botão com ícone `RotateCcw` para restaurar o enquadramento original.
 
 ---
 
 ## 🛠️ 2. Arquitetura da Solução
 
-### 2.1 Armazenamento Centralizado & Infraestrutura (`media8-storage/`)
-- **Diretório na Raiz do Repositório (`media8-storage/`)**:
-  - Criada a pasta física `media8-storage/` com subdiretórios `avatars/`, `high-fidelity/`, `proxies/` e `waveforms/`.
-  - Adicionada a regra `media8-storage/*` e `!media8-storage/**/.gitkeep` no `.gitignore`.
-- **Bind Mount Docker (`docker-compose.yml`)**:
-  - Mapeado o bind mount `./media8-storage:/storage` para os containers `api`, `worker-ingestion` e `worker-transcoder`.
-- **Reverse Proxy Nginx (`media8-web/nginx.conf`)**:
-  - Adicionadas regras de repasse `location /api/` e `location /storage/` direcionando chamadas ao container da API (`http://api:5000/storage/`).
+### 2.1 Backend (.NET 10 & Expurgo de Disco)
+- **Purga de Mídia em `UsersController.cs`**:
+  - Ao salvar `UpdateUser` onde o `AvatarUrl` inicia por `http://` ou `https://` (URL externa):
+    - O controller localiza o arquivo físico antigo em `media8-storage/avatars/{userId}.webp`.
+    - Executa `File.Delete(localAvatarFile)` com tratamento de exceção silencioso, eliminando lixo em disco.
 
-### 2.2 Backend (.NET 10 & SixLabors.ImageSharp)
-- **Servimento Estático Centralizado (`Program.cs`)**:
-  - Configurado `app.UseStaticFiles()` com `PhysicalFileProvider` mapeando o caminho `STORAGE_PATH` (default `./media8-storage` ou `/storage`) para responder em `/storage/*`.
-- **Upload e Processamento WebP (`UsersController.cs`)**:
-  - `POST /api/v1/Users/{id}/avatar`: Valida a assinatura de imagem (magic bytes), redimensiona e corta em 1:1 (200x200px) e grava a foto em `media8-storage/avatars/{id}.webp` com **WebP @ 80% de qualidade**.
-
-### 2.3 Frontend (React SPA & Crop 1:1)
-- **`Sidebar.tsx`**: Rótulo ajustado para unicamente **"Usuários"**.
-- **`UserRoleSelect.tsx` & `UsersPage.tsx`**: Purga de jargões técnicos ("RBAC"), substituindo por **"Função"** / **"Função de Acesso"**.
-- **Tabela Padrão Apple**: Cabeçalhos estilizados em caixa normal (`normal-case text-[#FFFBED] font-semibold text-xs tracking-tight`).
-- **`AvatarCropModal.tsx`**: Modal interativo de recorte 1:1 com grade de enquadramento (Regra dos Terços), slider de zoom e arraste (pan).
-- **`PasswordResetConfirmModal.tsx`**: Modal de segurança de 2 passos com **contador regressivo de 3 segundos** antes de habilitar a confirmação de nova senha.
-- **`Header.tsx` & `UsersPage.tsx`**: Exibição da foto do perfil (`AvatarUrl`) no menu superior e na tabela.
+### 2.2 Frontend (React SPA & UI Minimalista)
+- **Input Sutil de URL Externa com Trava de Lápis**:
+  - Renderizado logo abaixo da imagem de perfil nos modais de usuário.
+  - Estilo sutil acinzentado (`bg-[#400404]/5 opacity-75 cursor-not-allowed border-[#400404]/15 rounded-xl text-[11px] font-mono px-3 py-1.5`).
+  - Botão de lápis interno (`Pencil`) destrava o campo (`isUrlEditingAllowed = true`), permitindo digitação/colagem de links externos com atualização dinâmica do preview 1:1.
+- **Sincronização em Tempo Real no Header**:
+  - `App.tsx` lê `AvatarUrl` ao carregar usuário salvo do `localStorage`.
+  - Passado o callback `onUpdateCurrentUser` para `UsersPage.tsx`, garantindo que quando o usuário logado editar sua própria foto, o `Header.tsx` atualize a miniatura do topo imediatamente.
+- **`AvatarCropModal.tsx`**:
+  - Slider de zoom variando de `-100` (zoom out 0.5x) até `+100` (zoom in 2.5x), com ponto neutro em `0` (1.0x).
+  - Adicionado botão de **Reset** (`RotateCcw`) que redefini o slider para `0` e limpa o deslocamento do mouse (pan).
 
 ---
 
 ## 🧪 3. Validação e Qualidade
 
-1. **Suíte de Testes Unitários**: 100% de aprovação nos testes (.NET 10).
-2. **Compilação SPA**: `npm run build` executado sem erros TypeScript.
-3. **Containers Docker**: Recompilados e atualizados com sucesso (`media8_workstation_api`, `media8_workstation_web`, `worker-ingestion`, `worker-transcoder`).
+1. **Suíte de Testes Unitários**: 100% de aprovação (10/10 testes aprovados no .NET 10).
+2. **Compilação SPA**: `npm --prefix media8-web run build` finalizado com sucesso em 7.5s sem avisos de linter.
+3. **Containers Docker**: Recompilados e ativos com sucesso via `docker compose up -d --build`.
 
 ---
 
 ## 📜 4. Histórico de Commits Atômicos
 
-- `feat(storage): cria estrutura media8-storage na raiz do repositorio, bind mount docker e proxy no Nginx`
-- `feat(api): adiciona PhysicalFileProvider em Program.cs e grava avatares WebP em media8-storage/avatars`
-- `feat(front): ajusta AvatarCropModal 1:1, PasswordResetConfirmModal 3s e exibe avatares no Header e UsersPage`
-- `docs: adiciona estudo de caso 013 e atualiza matriz arquitetural v2.7.0`
+- `feat(api): adiciona expurgo automatico de arquivo .webp local em UsersController ao mudar para URL externa`
+- `feat(front): implementa caixa sutil de URL com lapisinho interno, reset de zoom -100..+100 e sync no Header`
+- `docs: atualiza estudo de caso 013 e matriz arquitetural v2.8.0`
