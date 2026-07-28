@@ -12,15 +12,24 @@ import {
   Video,
   Music,
   Image as ImageIcon,
-  FileCode,
   AlertCircle,
   ExternalLink,
+  Calendar as CalendarIcon,
+  Clock,
 } from 'lucide-react';
+import { format, addDays } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import type { Project, ProjectLink, User } from '../types';
 import { ProjectService } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
+import { Calendar } from '../components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -59,6 +68,9 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const [title, setTitle] = useState('');
   const [briefingText, setBriefingText] = useState('');
   const [externalOrderReference, setExternalOrderReference] = useState('');
+  const [selectedDeadline, setSelectedDeadline] = useState<Date | undefined>(undefined);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
   const [linkItems, setLinkItems] = useState<FormLinkItem[]>([
     { id: 'link-1', url: '', linkType: 'Folder' },
   ]);
@@ -75,7 +87,6 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
   const handleRemoveLinkField = (id: string) => {
     if (linkItems.length === 1) {
-      // Clear instead of removing last
       setLinkItems([{ id: 'link-1', url: '', linkType: 'Folder' }]);
       return;
     }
@@ -86,6 +97,13 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
     setLinkItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
+  };
+
+  // Quick Deadline Presets
+  const setQuickDeadline = (days: number) => {
+    const target = addDays(new Date(), days);
+    setSelectedDeadline(target);
+    setIsCalendarOpen(false);
   };
 
   // Create Project Submit Handler
@@ -120,6 +138,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
         Title: title.trim(),
         BriefingText: briefingText.trim(),
         ExternalOrderReference: externalOrderReference.trim() || undefined,
+        Deadline: selectedDeadline ? selectedDeadline.toISOString() : undefined,
         CreatedByUserId: currentUser.UserId,
         Links: validLinks,
       });
@@ -128,6 +147,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
       setTitle('');
       setBriefingText('');
       setExternalOrderReference('');
+      setSelectedDeadline(undefined);
       setLinkItems([{ id: 'link-1', url: '', linkType: 'Folder' }]);
       setIsCreateModalOpen(false);
       onRefreshProjects();
@@ -281,11 +301,20 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   {getStatusBadge(proj.Status)}
                 </div>
 
-                {proj.ExternalOrderReference && (
-                  <div className="text-xs font-mono font-bold text-purple-950 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 inline-block mb-3">
-                    CRM Order Ref: #{proj.ExternalOrderReference}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2 items-center mb-3">
+                  {proj.ExternalOrderReference && (
+                    <div className="text-xs font-mono font-bold text-purple-950 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 inline-block">
+                      CRM Order Ref: #{proj.ExternalOrderReference}
+                    </div>
+                  )}
+
+                  {proj.Deadline && (
+                    <div className="text-xs font-bold text-amber-950 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-amber-900" />
+                      <span>Prazo: {format(new Date(proj.Deadline), 'dd/MM/yyyy')}</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Briefing snippet */}
                 <p className="text-xs text-[#400404] font-medium line-clamp-3 bg-[#FFFBED] p-3 rounded-lg border border-[#400404]/15 leading-relaxed mb-3">
@@ -379,16 +408,104 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
               />
             </div>
 
-            {/* Campo: ID do Pedido / CRM Reference */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#400404]">ID do Pedido (Opcional - Alias do CRM)</label>
-              <Input
-                type="text"
-                placeholder="Ex: #0254 ou ORD-88492"
-                value={externalOrderReference}
-                onChange={(e) => setExternalOrderReference(e.target.value)}
-                className="bg-white text-xs font-mono font-medium text-[#400404]"
-              />
+            {/* Grid: ID do Pedido + Prazo de Entrega */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Campo: ID do Pedido / CRM Reference */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#400404]">ID do Pedido (Opcional - CRM Alias)</label>
+                <Input
+                  type="text"
+                  placeholder="Ex: #0254 ou ORD-88492"
+                  value={externalOrderReference}
+                  onChange={(e) => setExternalOrderReference(e.target.value)}
+                  className="bg-white text-xs font-mono font-medium text-[#400404]"
+                />
+              </div>
+
+              {/* Campo: Prazo de Entrega com Calendário Estilizado ShadCN */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#400404]">Prazo de Entrega</label>
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between p-2.5 bg-white border border-[#400404]/25 rounded-lg text-xs font-bold text-[#400404] hover:border-[#400404] transition-colors focus:ring-2 focus:ring-[#400404] cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4 text-[#400404]" />
+                        {selectedDeadline ? (
+                          format(selectedDeadline, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                        ) : (
+                          <span className="text-gray-400 font-normal">Selecione o prazo...</span>
+                        )}
+                      </span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto p-0 bg-[#FFFBED] border border-[#400404]/30 shadow-xl rounded-xl overflow-hidden"
+                    align="start"
+                  >
+                    {/* Presets Rápidos */}
+                    <div className="p-2 border-b border-[#400404]/15 flex items-center gap-1.5 bg-[#400404]/5">
+                      <button
+                        type="button"
+                        onClick={() => setQuickDeadline(0)}
+                        className="px-2 py-1 text-[11px] font-bold bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 transition-colors cursor-pointer"
+                      >
+                        Hoje
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDeadline(3)}
+                        className="px-2 py-1 text-[11px] font-bold bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 transition-colors cursor-pointer"
+                      >
+                        +3 Dias
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDeadline(7)}
+                        className="px-2 py-1 text-[11px] font-bold bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 transition-colors cursor-pointer"
+                      >
+                        +7 Dias
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDeadline(15)}
+                        className="px-2 py-1 text-[11px] font-bold bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 transition-colors cursor-pointer"
+                      >
+                        +15 Dias
+                      </button>
+                    </div>
+
+                    {/* Calendário ShadCN */}
+                    <Calendar
+                      mode="single"
+                      selected={selectedDeadline}
+                      onSelect={(date) => {
+                        setSelectedDeadline(date);
+                        setIsCalendarOpen(false);
+                      }}
+                      initialFocus
+                      className="bg-[#FFFBED] text-[#400404]"
+                    />
+
+                    {selectedDeadline && (
+                      <div className="p-2 border-t border-[#400404]/15 flex justify-end bg-white">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDeadline(undefined);
+                            setIsCalendarOpen(false);
+                          }}
+                          className="text-[11px] font-bold text-red-700 hover:text-red-900 p-1"
+                        >
+                          Limpar Data
+                        </button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
             {/* Campo: Briefing Detalhado */}
@@ -410,7 +527,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
               </label>
 
               <div className="space-y-2.5">
-                {linkItems.map((item, index) => (
+                {linkItems.map((item) => (
                   <div key={item.id} className="flex items-center gap-2">
                     {/* Dropdown Seletor de Tipo */}
                     <select

@@ -94,6 +94,7 @@ export const ProjectService = {
     Title: string;
     BriefingText?: string;
     ExternalOrderReference?: string;
+    Deadline?: string;
     CreatedByUserId: string;
     Links?: ProjectLink[];
   }): Promise<Project> => {
@@ -105,6 +106,7 @@ export const ProjectService = {
     Title: string;
     BriefingText?: string;
     ExternalOrderReference?: string;
+    Deadline?: string;
     Status: string;
     Links?: ProjectLink[];
   }): Promise<Project> => {

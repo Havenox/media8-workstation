@@ -84,6 +84,7 @@ export interface Project {
   Title: string;
   BriefingText?: string;
   ExternalOrderReference?: string;
+  Deadline?: string;
   Status: 'Draft' | 'InProduction' | 'InReview' | 'Completed' | 'Cancelled';
   IsDeleted?: boolean;
   CreatedByUserId: string;
