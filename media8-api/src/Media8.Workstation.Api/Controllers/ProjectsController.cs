@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Media8.Workstation.Application.DTOs;
 using Media8.Workstation.Domain.Entities;
 using Media8.Workstation.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
@@ -52,32 +54,91 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
     private readonly WorkstationDbContext _context = context;
 
     /// <summary>
-    /// Lista todos os projetos ativos do sistema (não-deletados).
+    /// Lista os projetos com suporte a paginação (20 em 20), filtros e limite para Dashboard.
+    /// Impõe autorização estrita via JWT Claims: Admins visualizam tudo, Editores apenas projetos designados.
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Project>>> GetProjects([FromQuery] Guid? userId, [FromQuery] string? role)
+    public async Task<IActionResult> GetProjects(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] int? limit = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? search = null)
     {
+        // 1. Obter permissões do usuário autenticado a partir dos Claims do JWT
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var roleClaim = User.FindFirstValue(ClaimTypes.Role);
+
+        Guid.TryParse(userIdClaim, out var currentUserId);
+
         var query = _context.Projects
             .Include(p => p.Links)
             .Include(p => p.Assets)
             .Where(p => !p.IsDeleted)
             .AsNoTracking();
 
-        if (role != "Admin" && userId.HasValue)
+        // 2. Aplicar trava RBAC: se não for Admin, restringe aos projetos atribuídos ao editor
+        if (roleClaim != "Admin")
         {
-            query = query.Where(p => p.AssignedEditors.Any(e => e.UserId == userId.Value));
+            query = query.Where(p => p.AssignedEditors.Any(e => e.UserId == currentUserId));
         }
 
-        var projects = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
-        return Ok(projects);
+        // 3. Aplicar filtros de busca e status
+        if (!string.IsNullOrWhiteSpace(status) && status.ToUpper() != "ALL")
+        {
+            query = query.Where(p => p.Status == status);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.Trim().ToLower();
+            query = query.Where(p =>
+                p.Title.ToLower().Contains(searchLower) ||
+                (p.BriefingText != null && p.BriefingText.ToLower().Contains(searchLower)) ||
+                (p.ExternalOrderReference != null && p.ExternalOrderReference.ToLower().Contains(searchLower)));
+        }
+
+        query = query.OrderByDescending(p => p.CreatedAt);
+
+        // 4. Se um limite fixo for solicitado (ex: limit=5 na Dashboard)
+        if (limit.HasValue && limit.Value > 0)
+        {
+            var recentProjects = await query.Take(limit.Value).ToListAsync();
+            return Ok(recentProjects);
+        }
+
+        // 5. Caso contrário, retorna payload paginado oficial (PagedResultDto)
+        var totalCount = await query.LongCountAsync();
+        var safePage = page < 1 ? 1 : page;
+        var safePageSize = pageSize < 1 ? 20 : (pageSize > 100 ? 100 : pageSize);
+
+        var items = await query
+            .Skip((safePage - 1) * safePageSize)
+            .Take(safePageSize)
+            .ToListAsync();
+
+        var pagedResult = new PagedResultDto<Project>
+        {
+            Items = items,
+            Page = safePage,
+            PageSize = safePageSize,
+            TotalCount = totalCount
+        };
+
+        return Ok(pagedResult);
     }
 
     /// <summary>
     /// Retorna detalhes de um projeto por ID com seus links e mídias.
+    /// Validado contra permissões de acesso do usuário.
     /// </summary>
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<Project>> GetProjectById(Guid id)
     {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var roleClaim = User.FindFirstValue(ClaimTypes.Role);
+        Guid.TryParse(userIdClaim, out var currentUserId);
+
         var project = await _context.Projects
             .Include(p => p.Links)
             .Include(p => p.Assets)
@@ -86,6 +147,12 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
             .FirstOrDefaultAsync(p => p.ProjectId == id && !p.IsDeleted);
 
         if (project == null) return NotFound();
+
+        // Trava RBAC
+        if (roleClaim != "Admin" && !project.AssignedEditors.Any(e => e.UserId == currentUserId))
+        {
+            return Forbid();
+        }
 
         return Ok(project);
     }
