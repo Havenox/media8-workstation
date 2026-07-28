@@ -21,8 +21,12 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
       <div className="flex items-center gap-3">
         {/* User Profile Pill */}
         <div className="flex items-center gap-2.5 bg-white px-3 py-1.5 rounded-xl border border-[#400404]/15 shadow-xs">
-          <div className="w-7 h-7 rounded-lg bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center">
-            {currentUser.Name ? currentUser.Name.charAt(0).toUpperCase() : 'U'}
+          <div className="w-7 h-7 rounded-lg bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center overflow-hidden border border-[#400404]/20 shadow-xs">
+            {currentUser.AvatarUrl ? (
+              <img src={currentUser.AvatarUrl} alt={currentUser.Name} className="w-full h-full object-cover" />
+            ) : (
+              currentUser.Name ? currentUser.Name.charAt(0).toUpperCase() : 'U'
+            )}
           </div>
           <div className="text-left hidden sm:block">
             <p className="text-xs font-semibold text-[#400404] leading-tight">{currentUser.Name}</p>

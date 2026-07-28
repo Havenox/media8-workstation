@@ -92,6 +92,15 @@ export const UserService = {
     const response = await api.put<User>(`/Users/${id}`, data);
     return response.data;
   },
+
+  uploadAvatar: async (id: string, file: File | Blob): Promise<{ AvatarUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file, 'avatar.webp');
+    const response = await api.post<{ AvatarUrl: string }>(`/Users/${id}/avatar`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 };
 
 export const ProjectService = {

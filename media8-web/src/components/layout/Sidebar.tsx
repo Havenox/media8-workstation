@@ -35,7 +35,7 @@ const navItems: NavItem[] = [
   { id: 'projects', path: '/projects', icon: FolderKanban, label: 'Projetos' },
   { id: 'workstation', path: '/workstation', icon: Film, label: 'Workstation PAM' },
   { id: 'jobs', path: '/jobs', icon: Activity, label: 'Esteira de Ingestão' },
-  { id: 'users', path: '/users', icon: Users, label: 'Usuários & Atribuições', roles: ['Admin'] },
+  { id: 'users', path: '/users', icon: Users, label: 'Usuários', roles: ['Admin'] },
   { id: 'settings', path: '/settings', icon: Settings, label: 'Configurações' },
 ];
 

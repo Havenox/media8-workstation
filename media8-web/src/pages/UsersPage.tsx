@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { UserPlus, Crown, Video, Loader2, Search, Edit2, Key, Mail, User as UserIcon } from 'lucide-react';
+import { UserPlus, Crown, Video, Loader2, Search, Edit2, Key, Upload, Trash2, Camera } from 'lucide-react';
 import type { User, Project, UserStats } from '../types';
 import { UserService } from '../services/api';
 import { Button } from '../components/ui/button';
@@ -7,6 +7,8 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { UserRoleSelect, UserRoleOption } from '../components/UserRoleSelect';
+import { AvatarCropModal } from '../components/auth/AvatarCropModal';
+import { PasswordResetConfirmModal } from '../components/auth/PasswordResetConfirmModal';
 
 interface UsersPageProps {
   projects: Project[];
@@ -37,6 +39,15 @@ export const UsersPage: React.FC<UsersPageProps> = ({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
+  // Password Reset 2-Step Confirmation Modal State
+  const [isPasswordConfirmOpen, setIsPasswordConfirmOpen] = useState(false);
+
+  // Avatar Crop Modal State
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState<string>('');
+  const [croppedAvatarBlob, setCroppedAvatarBlob] = useState<Blob | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string>('');
+
   // Form State (Create/Edit)
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -46,6 +57,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
 
   // Intersection Observer Sentinel Ref
   const observerSentinelRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Debounce search input (300ms)
   useEffect(() => {
@@ -124,12 +136,40 @@ export const UsersPage: React.FC<UsersPageProps> = ({
     return () => observer.disconnect();
   }, [handleObserver]);
 
+  // File Select Handler for Avatar
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate Image Type
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione um arquivo de imagem válido (JPG, PNG, WebP ou GIF).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result) {
+        setRawImageSrc(reader.result.toString());
+        setIsCropModalOpen(true);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = (croppedBlob: Blob, previewUrl: string) => {
+    setCroppedAvatarBlob(croppedBlob);
+    setAvatarPreviewUrl(previewUrl);
+  };
+
   // Handlers for Create User
   const handleOpenCreateModal = () => {
     setName('');
     setEmail('');
     setPassword('');
     setRole('Editor');
+    setCroppedAvatarBlob(null);
+    setAvatarPreviewUrl('');
     setIsCreateModalOpen(true);
   };
 
@@ -139,12 +179,17 @@ export const UsersPage: React.FC<UsersPageProps> = ({
 
     try {
       setIsSubmitting(true);
-      await UserService.createUser({
+      const created = await UserService.createUser({
         Name: name.trim(),
         Email: email.trim(),
         Password: password,
         Role: role,
       });
+
+      // Upload avatar if cropped image exists
+      if (croppedAvatarBlob && created.UserId) {
+        await UserService.uploadAvatar(created.UserId, croppedAvatarBlob);
+      }
 
       setIsCreateModalOpen(false);
       fetchUsers(1, true);
@@ -164,12 +209,26 @@ export const UsersPage: React.FC<UsersPageProps> = ({
     setEmail(userToEdit.Email);
     setRole(userToEdit.Role as UserRoleOption);
     setPassword(''); // Opcional na edição
+    setCroppedAvatarBlob(null);
+    setAvatarPreviewUrl(userToEdit.AvatarUrl || '');
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateUser = async (e: React.FormEvent) => {
+  // Submits form (or triggers password reset confirmation modal if password filled)
+  const handleFormSubmitAttempt = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser || !name.trim() || !email.trim()) return;
+
+    // If password is present, open 2-step confirmation modal
+    if (password.trim().length > 0) {
+      setIsPasswordConfirmOpen(true);
+    } else {
+      executeUserUpdate();
+    }
+  };
+
+  const executeUserUpdate = async () => {
+    if (!editingUser) return;
 
     try {
       setIsSubmitting(true);
@@ -180,6 +239,12 @@ export const UsersPage: React.FC<UsersPageProps> = ({
         Password: password.trim() ? password.trim() : undefined,
       });
 
+      // Upload new avatar photo if a new cropped image exists
+      if (croppedAvatarBlob) {
+        await UserService.uploadAvatar(editingUser.UserId, croppedAvatarBlob);
+      }
+
+      setIsPasswordConfirmOpen(false);
       setIsEditModalOpen(false);
       setEditingUser(null);
       fetchUsers(1, true);
@@ -199,7 +264,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
         <div>
           <h2 className="text-2xl font-semibold text-[#400404] tracking-tight">Usuários</h2>
           <p className="text-xs text-[#5C1212]/80 font-normal mt-0.5">
-            Gestão de contas de acesso e permissões RBAC da estação Media 8.
+            Gestão de contas e funções de acesso da estação Media 8.
           </p>
         </div>
 
@@ -288,11 +353,12 @@ export const UsersPage: React.FC<UsersPageProps> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-[#400404]">
-              <thead className="bg-[#400404] text-[#FFFBED] uppercase font-mono font-medium border-b border-[#400404]">
+              {/* Elegant normal-case table header */}
+              <thead className="bg-[#400404] text-[#FFFBED] font-semibold text-xs tracking-tight normal-case border-b border-[#400404]">
                 <tr>
                   <th className="p-3.5">Usuário</th>
                   <th className="p-3.5">E-mail</th>
-                  <th className="p-3.5">Papel (RBAC)</th>
+                  <th className="p-3.5">Função</th>
                   <th className="p-3.5">Data de Cadastro</th>
                   <th className="p-3.5 text-right">Ações</th>
                 </tr>
@@ -306,8 +372,13 @@ export const UsersPage: React.FC<UsersPageProps> = ({
                   >
                     <td className="p-3.5 font-semibold text-[#400404]">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center shadow-xs">
-                          {u.Name ? u.Name.charAt(0).toUpperCase() : 'U'}
+                        {/* Avatar Image or Initials Box */}
+                        <div className="w-9 h-9 rounded-xl bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center shadow-xs overflow-hidden shrink-0 border border-[#400404]/20">
+                          {u.AvatarUrl ? (
+                            <img src={u.AvatarUrl} alt={u.Name} className="w-full h-full object-cover" />
+                          ) : (
+                            u.Name ? u.Name.charAt(0).toUpperCase() : 'U'
+                          )}
                         </div>
                         <span>{u.Name}</span>
                       </div>
@@ -360,6 +431,32 @@ export const UsersPage: React.FC<UsersPageProps> = ({
         </div>
       </div>
 
+      {/* Hidden File Input for Avatar Selection */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+      />
+
+      {/* Interactive Avatar Crop Modal */}
+      <AvatarCropModal
+        isOpen={isCropModalOpen}
+        imageSrc={rawImageSrc}
+        onClose={() => setIsCropModalOpen(false)}
+        onCropComplete={handleCropComplete}
+      />
+
+      {/* Password Reset Security Confirmation Modal (3s Timer) */}
+      <PasswordResetConfirmModal
+        isOpen={isPasswordConfirmOpen}
+        userName={editingUser?.Name || 'Usuário'}
+        onClose={() => setIsPasswordConfirmOpen(false)}
+        onConfirm={executeUserUpdate}
+        isSubmitting={isSubmitting}
+      />
+
       {/* Modal: Cadastrar Usuário */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent className="bg-[#FFFBED] border border-[#400404]/20 text-[#400404] max-w-md rounded-2xl p-6 shadow-xl">
@@ -371,6 +468,23 @@ export const UsersPage: React.FC<UsersPageProps> = ({
           </DialogHeader>
 
           <form onSubmit={handleCreateUser} className="space-y-4 py-2">
+            {/* Avatar Selector Uploader Box */}
+            <div className="flex flex-col items-center justify-center gap-2 pb-2">
+              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <div className="w-20 h-20 rounded-2xl bg-[#400404] text-[#FFFBED] flex items-center justify-center overflow-hidden border-2 border-[#400404] shadow-md transition-transform group-hover:scale-105">
+                  {avatarPreviewUrl ? (
+                    <img src={avatarPreviewUrl} alt="Preview Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-8 h-8 text-[#FFFBED]/80" />
+                  )}
+                </div>
+                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Upload className="w-6 h-6 text-[#FFFBED]" />
+                </div>
+              </div>
+              <p className="text-[11px] text-[#5C1212]/80 font-medium">Clique para escolher foto de perfil</p>
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[#400404]">Nome Completo *</label>
               <Input
@@ -408,7 +522,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#400404]">Papel (RBAC) *</label>
+              <label className="text-xs font-semibold text-[#400404]">Função de Acesso *</label>
               <UserRoleSelect value={role} onChange={setRole} />
             </div>
 
@@ -446,11 +560,28 @@ export const UsersPage: React.FC<UsersPageProps> = ({
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-[#400404] tracking-tight">Editar Usuário</DialogTitle>
             <DialogDescription className="text-xs text-[#5C1212]/80 font-normal">
-              Atualize as informações de cadastro, papel RBAC ou redefina a senha.
+              Atualize as informações de cadastro, função de acesso ou foto de perfil.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleUpdateUser} className="space-y-4 py-2">
+          <form onSubmit={handleFormSubmitAttempt} className="space-y-4 py-2">
+            {/* Avatar Selector Uploader Box */}
+            <div className="flex flex-col items-center justify-center gap-2 pb-2">
+              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <div className="w-20 h-20 rounded-2xl bg-[#400404] text-[#FFFBED] flex items-center justify-center overflow-hidden border-2 border-[#400404] shadow-md transition-transform group-hover:scale-105">
+                  {avatarPreviewUrl ? (
+                    <img src={avatarPreviewUrl} alt="Preview Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-8 h-8 text-[#FFFBED]/80" />
+                  )}
+                </div>
+                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Upload className="w-6 h-6 text-[#FFFBED]" />
+                </div>
+              </div>
+              <p className="text-[11px] text-[#5C1212]/80 font-medium">Clique para alterar a foto de perfil</p>
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[#400404]">Nome Completo *</label>
               <Input
@@ -485,7 +616,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#400404]">Papel (RBAC) *</label>
+              <label className="text-xs font-semibold text-[#400404]">Função de Acesso *</label>
               <UserRoleSelect value={role} onChange={setRole} />
             </div>
 
