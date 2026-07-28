@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Media8.Workstation.Api/Media8.Workstation.Api.csproj" />
+    <Project Path="src/Media8.Workstation.Application/Media8.Workstation.Application.csproj" />
+    <Project Path="src/Media8.Workstation.Domain/Media8.Workstation.Domain.csproj" />
+    <Project Path="src/Media8.Workstation.Infrastructure/Media8.Workstation.Infrastructure.csproj" />
+  </Folder>
+  <Project Path="../media8-tests/Media8.Workstation.UnitTests/Media8.Workstation.UnitTests.csproj" />
+  <Project Path="../media8-workers/Media8.Workstation.Worker.Ingestion/Media8.Workstation.Worker.Ingestion.csproj" />
+  <Project Path="../media8-workers/Media8.Workstation.Worker.Transcoder/Media8.Workstation.Worker.Transcoder.csproj" />
+</Solution>
