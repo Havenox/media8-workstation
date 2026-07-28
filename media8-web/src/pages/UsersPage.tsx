@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
+import { UserRoleSelect } from '../components/UserRoleSelect';
 
 interface UsersPageProps {
   users: User[];
@@ -184,14 +185,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[#400404]">Papel (RBAC) *</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as 'Admin' | 'Editor')}
-                className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-xl text-xs font-medium text-[#400404] focus:outline-none focus:ring-2 focus:ring-[#400404]"
-              >
-                <option value="Editor">Editor (Acesso apenas aos Projetos Atribuídos)</option>
-                <option value="Admin">Administrador (Acesso Global + Gestão de Usuários)</option>
-              </select>
+              <UserRoleSelect value={role} onChange={setRole} />
             </div>
 
             <DialogFooter className="pt-3">
