@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 2.3.0  
+> *Versão:* 2.4.0  
 > *Status:* Ativo  
 
 ---
@@ -15,7 +15,16 @@ O **Media 8 | Workstation** segue a política de **Zero-Hardcode**. O projeto **
 
 ---
 
-## 2. Endpoint Dedicado de Estatísticas & Métricas (`GET /api/v1/Projects/Stats`)
+## 2. Roteamento Declarativo por URL & Layout Shell Persistente (`react-router-dom` v6)
+
+A navegação da estação PAM utiliza rotas declarativas baseadas em URLs reais:
+- **Layout Shell Persistente (`AppLayout.tsx`)**: O **Sidebar** e o **Header** permanecem fixos e montados continuamente no DOM. Aparelhos de busca, perfil de usuário e atalhos não sofrem re-renders desnecessários.
+- **Renderização Dinâmica do Corpo (`<Outlet />`)**: Apenas o container central de conteúdo (`<main>`) é atualizado dinamicamente conforme a rota ativa (`/dashboard`, `/projects`, `/workstation/:projectId`, `/jobs`, `/users`, `/storage`).
+- **Nginx SPA Fallback**: Configuração da instrução `try_files $uri $uri/ /index.html;` no Nginx do container Docker, garantindo recarregamento via `F5` e Deep Linking de qualquer rota sem erro 404.
+
+---
+
+## 3. Endpoint Dedicado de Estatísticas & Métricas (`GET /api/v1/Projects/Stats`)
 
 O Dashboard consome as estatísticas consolidadas da estação a partir de um endpoint dedicado de metadados agregados:
 `GET /api/v1/Projects/Stats`
@@ -25,7 +34,7 @@ O Dashboard consome as estatísticas consolidadas da estação a partir de um en
 
 ---
 
-## 3. Diretrizes de Design Visual Premium (Padrão Apple / Media 8 Design System)
+## 4. Diretrizes de Design Visual Premium (Padrão Apple / Media 8 Design System)
 
 1. **Banimento Estrito de Emojis**:
    - Emojis unicode estão proibidos no código frontend.
@@ -40,7 +49,7 @@ O Dashboard consome as estatísticas consolidadas da estação a partir de um en
 
 ---
 
-## 4. Padrão Arquitetural `WorkstationBaseController` (`api/v1/[controller]`)
+## 5. Padrão Arquitetural `WorkstationBaseController` (`api/v1/[controller]`)
 
 Todos os controladores da API .NET 10 herdam obrigatoriamente da classe base abstrata **`WorkstationBaseController`**:
 
@@ -56,7 +65,7 @@ public abstract class WorkstationBaseController : ControllerBase
 
 ---
 
-## 5. Histórico de Estudos de Caso
+## 6. Histórico de Estudos de Caso
 
 - **[Estudo de Caso 001](implementations/001-integracao-inicial-workstation-dotnet10.md):** Arquitetura inicial .NET 10, JWT e SignalR.
 - **[Estudo de Caso 002](implementations/002-credenciais-iniciais-admin-dotenv.md):** Injeção de credenciais de Admin via `.env` e Seeding dinâmico.
@@ -68,3 +77,4 @@ public abstract class WorkstationBaseController : ControllerBase
 - **[Estudo de Caso 008](implementations/008-redesenho-visual-premium-projetos.md):** Redesenho Visual Premium (Padrão Apple) na Gestão de Projetos e Banimento de Emojis.
 - **[Estudo de Caso 009](implementations/009-componente-linktypeselect-icones-lucide-hover.md):** Componente Customizado LinkTypeSelect e Correção de Contraste no Hover.
 - **[Estudo de Caso 010](implementations/010-endpoint-estatisticas-projetos-dashboard.md):** Endpoint Dedicado de Estatísticas (GET /api/v1/Projects/Stats) e Correção dos Indicadores do Dashboard.
+- **[Estudo de Caso 011](implementations/011-roteamento-declarativo-applayout-nginx.md):** Roteamento Declarativo por URL (react-router-dom v6), Layout Shell Persistente e Fallback Nginx.
