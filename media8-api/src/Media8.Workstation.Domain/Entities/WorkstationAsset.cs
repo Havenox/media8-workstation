@@ -3,7 +3,7 @@ namespace Media8.Workstation.Domain.Entities;
 public class WorkstationAsset
 {
     public Guid AssetId { get; set; } = Guid.NewGuid();
-    public Guid OrderId { get; set; }
+    public Guid ProjectId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string OriginalFileName { get; set; } = string.Empty;
     public string ExternalSourceUrl { get; set; } = string.Empty;
@@ -21,7 +21,7 @@ public class WorkstationAsset
     public string Status { get; set; } = "Pending"; // "Pending", "Downloading", "Transcoding", "Ready", "Failed"
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public Order Order { get; set; } = null!;
+    public Project Project { get; set; } = null!;
     public ICollection<TimecodeMarker> Markers { get; set; } = new List<TimecodeMarker>();
     public ICollection<MediaProcessingJob> Jobs { get; set; } = new List<MediaProcessingJob>();
 }

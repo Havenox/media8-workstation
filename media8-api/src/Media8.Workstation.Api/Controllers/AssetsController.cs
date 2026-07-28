@@ -11,7 +11,7 @@ namespace Media8.Workstation.Api.Controllers;
 /// </summary>
 public class IngestMediaRequest
 {
-    public Guid OrderId { get; set; }
+    public Guid ProjectId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string ExternalSourceUrl { get; set; } = string.Empty;
     public string OriginalFileName { get; set; } = string.Empty;
@@ -26,14 +26,14 @@ public class AssetsController(WorkstationDbContext context) : WorkstationBaseCon
     private readonly WorkstationDbContext _context = context;
 
     /// <summary>
-    /// Retorna todas as mídias de uma Order específica.
+    /// Retorna todas as mídias de um Projeto específico.
     /// </summary>
-    [HttpGet("Order/{orderId:guid}")]
-    public async Task<ActionResult<IEnumerable<WorkstationAsset>>> GetAssetsByOrder(Guid orderId)
+    [HttpGet("Project/{projectId:guid}")]
+    public async Task<ActionResult<IEnumerable<WorkstationAsset>>> GetAssetsByProject(Guid projectId)
     {
         var assets = await _context.WorkstationAssets
             .Include(a => a.Markers)
-            .Where(a => a.OrderId == orderId)
+            .Where(a => a.ProjectId == projectId)
             .OrderByDescending(a => a.CreatedAt)
             .ToListAsync();
 
@@ -68,7 +68,7 @@ public class AssetsController(WorkstationDbContext context) : WorkstationBaseCon
 
         var asset = new WorkstationAsset
         {
-            OrderId = request.OrderId,
+            ProjectId = request.ProjectId,
             Title = request.Title,
             ExternalSourceUrl = request.ExternalSourceUrl,
             OriginalFileName = request.OriginalFileName,

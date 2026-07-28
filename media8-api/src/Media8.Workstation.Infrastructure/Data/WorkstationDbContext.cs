@@ -13,10 +13,6 @@ public class WorkstationDbContext : DbContext
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectEditor> ProjectEditors => Set<ProjectEditor>();
     public DbSet<ProjectLink> ProjectLinks => Set<ProjectLink>();
-
-    // Backward compatibility Set
-    public DbSet<Order> Orders => Set<Order>();
-    public DbSet<OrderEditor> OrderEditors => Set<OrderEditor>();
     public DbSet<WorkstationAsset> WorkstationAssets => Set<WorkstationAsset>();
     public DbSet<TimecodeMarker> TimecodeMarkers => Set<TimecodeMarker>();
     public DbSet<MediaProcessingJob> MediaProcessingJobs => Set<MediaProcessingJob>();
@@ -30,8 +26,6 @@ public class WorkstationDbContext : DbContext
         modelBuilder.Entity<Project>().ToTable("Projects");
         modelBuilder.Entity<ProjectEditor>().ToTable("ProjectEditors");
         modelBuilder.Entity<ProjectLink>().ToTable("ProjectLinks");
-        modelBuilder.Entity<Order>().ToTable("Orders");
-        modelBuilder.Entity<OrderEditor>().ToTable("OrderEditors");
         modelBuilder.Entity<WorkstationAsset>().ToTable("WorkstationAssets");
         modelBuilder.Entity<TimecodeMarker>().ToTable("TimecodeMarkers");
         modelBuilder.Entity<MediaProcessingJob>().ToTable("MediaProcessingJobs");
@@ -93,36 +87,6 @@ public class WorkstationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Order Configuration (Backward compatibility)
-        modelBuilder.Entity<Order>(entity =>
-        {
-            entity.HasKey(e => e.OrderId);
-            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
-            entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("Draft");
-
-            entity.HasOne(e => e.CreatedByUser)
-                .WithMany(u => u.CreatedOrders)
-                .HasForeignKey(e => e.CreatedByUserId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        // OrderEditor Junction Configuration
-        modelBuilder.Entity<OrderEditor>(entity =>
-        {
-            entity.HasKey(e => e.OrderEditorId);
-            entity.HasIndex(e => new { e.OrderId, e.UserId }).IsUnique();
-
-            entity.HasOne(e => e.Order)
-                .WithMany(o => o.AssignedEditors)
-                .HasForeignKey(e => e.OrderId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.User)
-                .WithMany(u => u.AssignedOrders)
-                .HasForeignKey(e => e.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
         // WorkstationAsset Configuration
         modelBuilder.Entity<WorkstationAsset>(entity =>
         {
@@ -134,9 +98,9 @@ public class WorkstationDbContext : DbContext
             entity.Property(e => e.TimecodeStart).HasMaxLength(12).HasDefaultValue("00:00:00:00");
             entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("Pending");
 
-            entity.HasOne(e => e.Order)
-                .WithMany(o => o.Assets)
-                .HasForeignKey(e => e.OrderId)
+            entity.HasOne(e => e.Project)
+                .WithMany(p => p.Assets)
+                .HasForeignKey(e => e.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

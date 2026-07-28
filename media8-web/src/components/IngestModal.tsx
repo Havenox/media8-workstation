@@ -6,11 +6,11 @@ import { Button } from './ui/button';
 interface IngestModalProps {
   isOpen: boolean;
   onClose: () => void;
-  orderId: string;
+  projectId: string;
   onSuccess: () => void;
 }
 
-export const IngestModal: React.FC<IngestModalProps> = ({ isOpen, onClose, orderId, onSuccess }) => {
+export const IngestModal: React.FC<IngestModalProps> = ({ isOpen, onClose, projectId, onSuccess }) => {
   const [title, setTitle] = useState('');
   const [externalSourceUrl, setExternalSourceUrl] = useState('');
   const [originalFileName, setOriginalFileName] = useState('');
@@ -30,7 +30,7 @@ export const IngestModal: React.FC<IngestModalProps> = ({ isOpen, onClose, order
       setLoading(true);
       setError(null);
       await AssetService.ingestMedia({
-        OrderId: orderId,
+        ProjectId: projectId,
         Title: title,
         ExternalSourceUrl: externalSourceUrl,
         OriginalFileName: originalFileName,
@@ -100,7 +100,7 @@ export const IngestModal: React.FC<IngestModalProps> = ({ isOpen, onClose, order
               placeholder="https://drive.google.com/file/d/..."
               value={externalSourceUrl}
               onChange={(e) => setExternalSourceUrl(e.target.value)}
-              className="w-full bg-white border border-[#400404]/20 rounded-lg px-3 py-2 text-xs text-[#400404] font-mono font-medium placeholder:text-[#5C1212]/50 focus:outline-none focus:ring-2 focus:ring-[#400404]"
+              className="w-full bg-[#FFFBED] border border-[#400404]/20 rounded-lg px-3 py-2 text-xs text-[#400404] font-mono font-medium placeholder:text-[#5C1212]/50 focus:outline-none focus:ring-2 focus:ring-[#400404]"
             />
           </div>
 

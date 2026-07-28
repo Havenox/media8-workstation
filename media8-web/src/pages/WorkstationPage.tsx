@@ -5,7 +5,7 @@ import { WaveformCanvas } from '../components/WaveformCanvas';
 import { SubClipEditor } from '../components/SubClipEditor';
 import { IngestModal } from '../components/IngestModal';
 import { TimecodeService } from '../services/api';
-import { Film, Plus, FileCode, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Film, Plus, FileCode } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
 interface WorkstationPageProps {
@@ -193,7 +193,7 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
         <IngestModal
           isOpen={isIngestModalOpen}
           onClose={() => setIsIngestModalOpen(false)}
-          orderId={activeProject.ProjectId}
+          projectId={activeProject.ProjectId}
           onSuccess={onRefreshProjects}
         />
       )}

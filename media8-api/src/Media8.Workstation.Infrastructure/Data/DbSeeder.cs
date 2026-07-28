@@ -57,6 +57,11 @@ public static class DbSeeder
                 );
             ");
 
+            // Ensure WorkstationAssets table uses ProjectId
+            await dbContext.Database.ExecuteSqlRawAsync(@"
+                ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""ProjectId"" uuid REFERENCES ""Projects""(""ProjectId"") ON DELETE CASCADE;
+            ");
+
             Console.WriteLine("[DbSeeder] Database Schema successfully verified and updated.");
         }
         catch (Exception ex)

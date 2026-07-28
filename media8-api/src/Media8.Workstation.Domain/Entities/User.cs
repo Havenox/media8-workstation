@@ -9,7 +9,5 @@ public class User
     public string Role { get; set; } = "Editor"; // "Admin", "Editor"
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public ICollection<Order> CreatedOrders { get; set; } = new List<Order>();
-    public ICollection<OrderEditor> AssignedOrders { get; set; } = new List<OrderEditor>();
     public ICollection<TimecodeMarker> Markers { get; set; } = new List<TimecodeMarker>();
 }
