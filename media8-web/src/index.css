@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-wine-deep: #400404;
+  --color-wine-warm: #5c1212;
+  --color-wine-vibrant: #7b0a0a;
+  --color-cream-soft: #fffbed;
+  --color-bg-dark: #120303;
+  --color-surface-dark: #1f0606;
+  --color-border-dark: #3a0a0a;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-dark);
+  color: var(--color-cream-soft);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Wine Glassmorphism */
+.glass-panel {
+  background: rgba(31, 6, 6, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(123, 10, 10, 0.3);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #120303;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #400404;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #7b0a0a;
+}
