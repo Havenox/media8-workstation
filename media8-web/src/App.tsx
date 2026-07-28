@@ -7,7 +7,7 @@ import { IngestModal } from './components/IngestModal';
 import { LoginScreen } from './components/LoginScreen';
 import type { Order, WorkstationAsset, TimecodeMarker, AuthResponse } from './types';
 import { OrderService, TimecodeService, AuthService } from './services/api';
-import { Folder, Film, FileText, PlusCircle, AlertCircle } from 'lucide-react';
+import { Folder, Film, FileText, PlusCircle, AlertCircle, Sparkles } from 'lucide-react';
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<AuthResponse | null>(() => {
@@ -114,7 +114,7 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-bg text-cream-soft flex flex-col font-sans">
+    <div className="min-h-screen bg-[#140101] text-cream-soft flex flex-col font-sans selection:bg-wine-vibrant selection:text-cream-soft">
       <Header
         currentUser={currentUser}
         onOpenIngestModal={() => setIsIngestModalOpen(true)}
@@ -123,14 +123,14 @@ export function App() {
       />
 
       {error && (
-        <div className="mx-6 mt-4 p-4 bg-wine-deep/80 border border-wine-vibrant rounded-xl text-xs text-cream-soft flex items-center justify-between shadow-lg">
+        <div className="mx-6 mt-4 p-4 bg-red-950/80 border border-red-800/80 rounded-xl text-xs text-cream-soft flex items-center justify-between shadow-xl animate-fade-in">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
             <span>{error}</span>
           </div>
           <button
             onClick={loadOrders}
-            className="px-3 py-1 bg-wine-vibrant hover:bg-wine-warm text-cream-soft font-semibold rounded-lg text-xs cursor-pointer"
+            className="px-3.5 py-1.5 bg-wine-vibrant hover:bg-wine-warm text-cream-soft font-semibold rounded-xl text-xs shadow-md transition-all cursor-pointer"
           >
             Tentar Novamente
           </button>
@@ -139,29 +139,30 @@ export function App() {
 
       <main className="flex-1 p-6 grid grid-cols-12 gap-6 max-w-[1920px] mx-auto w-full">
         {/* Left Sidebar: Orders & Asset Explorer */}
-        <aside className="col-span-3 glass-panel rounded-2xl p-5 border border-wine-vibrant/30 flex flex-col gap-5 h-[calc(100vh-120px)] overflow-y-auto">
-          <div className="flex items-center justify-between border-b border-dark-border pb-3">
+        <aside className="col-span-3 glass-panel rounded-2xl p-5 border border-wine-vibrant/30 flex flex-col gap-5 h-[calc(100vh-120px)] overflow-y-auto shadow-2xl">
+          <div className="flex items-center justify-between border-b border-wine-vibrant/20 pb-3">
             <div className="flex items-center gap-2">
-              <Folder className="w-5 h-5 text-wine-vibrant" />
-              <h2 className="font-bold text-sm text-cream-soft uppercase tracking-wider">Orders (Projetos)</h2>
+              <Folder className="w-4 h-4 text-wine-vibrant" />
+              <h2 className="font-bold text-xs text-cream-soft uppercase tracking-wider">Orders (Projetos)</h2>
             </div>
             <button
               onClick={handleCreateNewOrder}
               title="Nova Order"
-              className="p-1 hover:bg-wine-deep/40 rounded text-cream-soft/80 hover:text-cream-soft cursor-pointer"
+              className="p-1.5 hover:bg-wine-deep/60 rounded-lg text-cream-soft/80 hover:text-cream-soft transition-all cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
             </button>
           </div>
 
           {/* Orders List (Real DB Query) */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {orders.length === 0 ? (
-              <div className="text-center py-6 border border-dashed border-dark-border rounded-xl p-4">
-                <p className="text-xs text-cream-soft/50 mb-2">Nenhuma Order encontrada no banco PostgreSQL.</p>
+              <div className="text-center py-8 border border-dashed border-wine-vibrant/30 rounded-2xl p-5 bg-[#100101]">
+                <Sparkles className="w-8 h-8 text-wine-vibrant/50 mx-auto mb-2" />
+                <p className="text-xs text-cream-soft/60 mb-3 leading-relaxed">Nenhuma Order encontrada no PostgreSQL.</p>
                 <button
                   onClick={handleCreateNewOrder}
-                  className="bg-wine-deep hover:bg-wine-warm text-cream-soft text-xs font-semibold px-3 py-1.5 rounded-lg border border-wine-vibrant cursor-pointer"
+                  className="bg-gradient-to-r from-wine-deep to-wine-vibrant hover:from-wine-warm hover:to-wine-vibrant text-cream-soft text-xs font-semibold px-4 py-2 rounded-xl border border-wine-vibrant/50 shadow-md cursor-pointer transition-all"
                 >
                   + Criar Primeira Order
                 </button>
@@ -178,20 +179,21 @@ export function App() {
                       setSelectedAsset(undefined);
                     }
                   }}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                     selectedOrder?.OrderId === order.OrderId
-                      ? 'bg-wine-deep/50 border-wine-vibrant shadow-md'
-                      : 'bg-dark-surface hover:bg-dark-bg border-dark-border'
+                      ? 'bg-gradient-to-r from-wine-deep/70 to-wine-warm/40 border-wine-vibrant shadow-lg scale-[1.01]'
+                      : 'bg-[#100101] hover:bg-[#140101] border-wine-vibrant/20'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-semibold text-cream-soft truncate">{order.Title}</h3>
-                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-dark-bg border border-dark-border text-cream-soft/70">
+                    <h3 className="text-xs font-bold text-cream-soft truncate">{order.Title}</h3>
+                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#1A0202] border border-wine-vibrant/40 text-cream-soft/80">
                       {order.Status}
                     </span>
                   </div>
-                  <p className="text-[11px] text-cream-soft/50 mt-1 truncate">
-                    {order.Assets?.length || 0} mídias cadastradas
+                  <p className="text-[11px] text-cream-soft/50 mt-1.5 truncate flex items-center gap-1">
+                    <Film className="w-3 h-3 text-wine-vibrant" />
+                    <span>{order.Assets?.length || 0} mídias cadastradas</span>
                   </p>
                 </div>
               ))
@@ -200,12 +202,12 @@ export function App() {
 
           {/* Selected Order Briefing */}
           {selectedOrder && (
-            <div className="mt-auto border-t border-dark-border pt-4">
+            <div className="mt-auto border-t border-wine-vibrant/20 pt-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="w-4 h-4 text-wine-vibrant" />
-                <h4 className="text-xs font-bold uppercase text-cream-soft/80">Briefing da Order</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-cream-soft/90">Briefing da Order</h4>
               </div>
-              <p className="text-xs text-cream-soft/70 bg-dark-bg p-3 rounded-xl border border-dark-border leading-relaxed max-h-36 overflow-y-auto">
+              <p className="text-xs text-cream-soft/75 bg-[#100101] p-3.5 rounded-xl border border-wine-vibrant/20 leading-relaxed max-h-36 overflow-y-auto shadow-inner">
                 {selectedOrder.BriefingText || 'Nenhum briefing especificado.'}
               </p>
             </div>
@@ -234,16 +236,16 @@ export function App() {
         {/* Right Sidebar: Sub-clips & Media Explorer */}
         <aside className="col-span-3 flex flex-col gap-6">
           {/* Order Assets List */}
-          <div className="glass-panel rounded-2xl p-5 border border-wine-vibrant/30 flex flex-col gap-3 max-h-64 overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-dark-border pb-2">
+          <div className="glass-panel rounded-2xl p-5 border border-wine-vibrant/30 flex flex-col gap-3 max-h-64 overflow-y-auto shadow-xl">
+            <div className="flex items-center justify-between border-b border-wine-vibrant/20 pb-2">
               <div className="flex items-center gap-2">
                 <Film className="w-4 h-4 text-wine-vibrant" />
-                <h3 className="font-bold text-xs text-cream-soft uppercase">Mídias da Order</h3>
+                <h3 className="font-bold text-xs text-cream-soft uppercase tracking-wider">Mídias da Order</h3>
               </div>
               {selectedOrder && (
                 <button
                   onClick={() => setIsIngestModalOpen(true)}
-                  className="text-[11px] text-wine-vibrant hover:underline font-semibold cursor-pointer"
+                  className="text-[11px] text-wine-vibrant hover:text-cream-soft font-semibold cursor-pointer transition-colors"
                 >
                   + Ingest
                 </button>
@@ -259,16 +261,16 @@ export function App() {
                 <div
                   key={asset.AssetId}
                   onClick={() => setSelectedAsset(asset)}
-                  className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-all ${
+                  className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
                     selectedAsset?.AssetId === asset.AssetId
-                      ? 'bg-wine-warm/40 border-wine-vibrant text-cream-soft'
-                      : 'bg-dark-surface border-dark-border text-cream-soft/70 hover:bg-dark-bg'
+                      ? 'bg-gradient-to-r from-wine-deep/80 to-wine-vibrant/40 border-wine-vibrant text-cream-soft shadow-md'
+                      : 'bg-[#100101] border-wine-vibrant/20 text-cream-soft/70 hover:bg-[#140101]'
                   }`}
                 >
-                  <div className="font-medium truncate">{asset.Title}</div>
+                  <div className="font-semibold truncate">{asset.Title}</div>
                   <div className="text-[10px] font-mono text-cream-soft/50 flex items-center justify-between mt-1">
-                    <span>{asset.OriginalFileName}</span>
-                    <span className="uppercase text-wine-vibrant">{asset.Status}</span>
+                    <span className="truncate max-w-[140px]">{asset.OriginalFileName}</span>
+                    <span className="uppercase text-wine-vibrant font-bold">{asset.Status}</span>
                   </div>
                 </div>
               ))
