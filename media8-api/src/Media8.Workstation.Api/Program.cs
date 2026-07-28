@@ -1,6 +1,10 @@
+using System.Text;
 using Media8.Workstation.Api.Hubs;
 using Media8.Workstation.Infrastructure.Data;
+using Media8.Workstation.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,7 +18,34 @@ builder.Services.AddControllers()
 // 2. Add SignalR for Real-time Notifications
 builder.Services.AddSignalR();
 
-// 3. Smart Database Connection String Resolution
+// 3. Register JwtTokenService
+builder.Services.AddScoped<JwtTokenService>();
+
+// 4. Configure JWT Bearer Authentication
+var jwtSecretKey = builder.Configuration["JWT_SECRET_KEY"] ?? "S3cur3S3cr3tKeyM3dia8Workstati0n2026!Min32Chars";
+var jwtIssuer = builder.Configuration["JWT_ISSUER"] ?? "Media8Workstation";
+var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? "Media8WorkstationUsers";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey))
+    };
+});
+
+// 5. Smart Database Connection String Resolution
 var connectionString = builder.Configuration["DB_CONNECTION_STRING"]
     ?? builder.Configuration.GetConnectionString("PostgreSQL")
     ?? builder.Configuration["DATABASE_URL"];
@@ -32,7 +63,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddDbContext<WorkstationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// 4. CORS Configuration for Frontend SPA
+// 6. CORS Configuration for Frontend SPA
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -57,16 +88,20 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
-// Automatic Migration Execution on Startup
+// Automatic Migration Execution & Initial Admin Seeding on Startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WorkstationDbContext>();
     db.Database.Migrate();
+
+    // Seed initial admin user if none exists (Zero hardcoded credentials)
+    await DbSeeder.SeedInitialAdminAsync(db, builder.Configuration);
 }
 
 app.Run();

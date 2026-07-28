@@ -1,5 +1,6 @@
 using Media8.Workstation.Domain.Entities;
 using Media8.Workstation.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,7 @@ public class IngestMediaRequest
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class AssetsController(WorkstationDbContext context) : ControllerBase
 {
     private readonly WorkstationDbContext _context = context;

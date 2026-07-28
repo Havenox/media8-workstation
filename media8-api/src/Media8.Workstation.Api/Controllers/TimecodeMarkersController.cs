@@ -1,5 +1,6 @@
 using Media8.Workstation.Domain.Entities;
 using Media8.Workstation.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,7 @@ namespace Media8.Workstation.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class TimecodeMarkersController(WorkstationDbContext context) : ControllerBase
 {
     private readonly WorkstationDbContext _context = context;
