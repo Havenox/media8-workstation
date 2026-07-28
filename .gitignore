@@ -13,6 +13,8 @@
 # 2. Local Media Storage & Blobs (NUNCA commitar arquivos pesados de mídias/proxies)
 storage/
 /storage/
+media8-storage/*
+!media8-storage/**/.gitkeep
 storage_data/
 /storage_data/
 postgres_data/
