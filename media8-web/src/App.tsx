@@ -39,6 +39,40 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ user, allowedRoles, children 
   return <>{children}</>;
 };
 
+// Mock Fallback Projects for Demonstration
+const MOCK_PROJECTS: Project[] = [
+  {
+    ProjectId: 'proj-101',
+    Title: 'Vídeo Institucional Media 8 - 2026',
+    BriefingText: 'Roteiro de 60 segundos com foco em cortes dinâmicos de backstage, depoimentos curtos e encerramento com motion logo.',
+    ExternalOrderReference: 'ORD-9981',
+    Status: 'InProduction',
+    CreatedByUserId: 'user-admin',
+    CreatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    UpdatedAt: new Date().toISOString(),
+    Assets: [
+      {
+        AssetId: 'asset-01',
+        ProjectId: 'proj-101',
+        Title: 'Take 01 - Backstage Câmera A (4K)',
+        OriginalFileName: 'A001_C001_0728_RAW.MOV',
+        ExternalSourceUrl: 'https://drive.google.com/file/d/sample1',
+        StoragePathProxy: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        FileSizeBytes: 1540000000,
+        MimeType: 'video/mp4',
+        DurationSeconds: 15.0,
+        FrameRate: 29.97,
+        Width: 3840,
+        Height: 2160,
+        AudioChannels: 2,
+        TimecodeStart: '00:01:10:00',
+        Status: 'Ready',
+        CreatedAt: new Date().toISOString(),
+      },
+    ],
+  },
+];
+
 export function AppContent() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -48,40 +82,6 @@ export function AppContent() {
   const [activeProject, setActiveProject] = useState<Project | null>(null);
 
   const navigate = useNavigate();
-
-  // Mock Fallback Projects for Demonstration
-  const mockProjects: Project[] = [
-    {
-      ProjectId: 'proj-101',
-      Title: 'Vídeo Institucional Media 8 - 2026',
-      BriefingText: 'Roteiro de 60 segundos com foco em cortes dinâmicos de backstage, depoimentos curtos e encerramento com motion logo.',
-      ExternalOrderReference: 'ORD-9981',
-      Status: 'InProduction',
-      CreatedByUserId: 'user-admin',
-      CreatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-      UpdatedAt: new Date().toISOString(),
-      Assets: [
-        {
-          AssetId: 'asset-01',
-          ProjectId: 'proj-101',
-          Title: 'Take 01 - Backstage Câmera A (4K)',
-          OriginalFileName: 'A001_C001_0728_RAW.MOV',
-          ExternalSourceUrl: 'https://drive.google.com/file/d/sample1',
-          StoragePathProxy: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-          FileSizeBytes: 1540000000,
-          MimeType: 'video/mp4',
-          DurationSeconds: 15.0,
-          FrameRate: 29.97,
-          Width: 3840,
-          Height: 2160,
-          AudioChannels: 2,
-          TimecodeStart: '00:01:10:00',
-          Status: 'Ready',
-          CreatedAt: new Date().toISOString(),
-        },
-      ],
-    },
-  ];
 
   // Initial Auth Check
   useEffect(() => {
@@ -137,41 +137,42 @@ export function AppContent() {
   }, [navigate]);
 
   // Fetch Projects and Users for System Context
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       const res = await ProjectService.getProjects({ limit: 5 });
       const itemsList = Array.isArray(res) ? res : (res?.Items || []);
 
       if (itemsList.length > 0) {
         setProjects(itemsList);
-        if (!activeProject) setActiveProject(itemsList[0]);
+        setActiveProject((prev) => prev || itemsList[0]);
       } else {
-        setProjects(mockProjects);
-        if (!activeProject) setActiveProject(mockProjects[0]);
+        setProjects(MOCK_PROJECTS);
+        setActiveProject((prev) => prev || MOCK_PROJECTS[0]);
       }
     } catch {
-      setProjects(mockProjects);
-      if (!activeProject) setActiveProject(mockProjects[0]);
+      setProjects(MOCK_PROJECTS);
+      setActiveProject((prev) => prev || MOCK_PROJECTS[0]);
     }
-  };
+  }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const data = await UserService.getUsers();
-      setUsers(data);
+      const userItems = Array.isArray(data) ? data : (data as any)?.Items || [];
+      setUsers(userItems);
     } catch {
       if (currentUser) {
         setUsers([currentUser]);
       }
     }
-  };
+  }, [currentUser]);
 
   useEffect(() => {
     if (currentUser) {
       loadProjects();
       loadUsers();
     }
-  }, [currentUser]);
+  }, [currentUser, loadProjects, loadUsers]);
 
   const handleOpenWorkstationForProject = (project: Project) => {
     setActiveProject(project);

@@ -11,6 +11,7 @@ import { AvatarCropModal } from '../components/auth/AvatarCropModal';
 import { PasswordResetConfirmModal } from '../components/auth/PasswordResetConfirmModal';
 
 interface UsersPageProps {
+  users?: User[];
   projects: Project[];
   currentUser: User;
   onRefreshUsers?: () => void;
