@@ -24,6 +24,7 @@ public class CreateProjectRequest
     public string Title { get; set; } = string.Empty;
     public string? BriefingText { get; set; }
     public string? ExternalOrderReference { get; set; } // Chave fria / Alias do CRM (ex: #0254)
+    public DateTime? Deadline { get; set; } // Prazo de entrega
     public Guid CreatedByUserId { get; set; }
     public List<ProjectLinkDto> Links { get; set; } = new();
 }
@@ -36,6 +37,7 @@ public class UpdateProjectRequest
     public string Title { get; set; } = string.Empty;
     public string? BriefingText { get; set; }
     public string? ExternalOrderReference { get; set; }
+    public DateTime? Deadline { get; set; }
     public string Status { get; set; } = "InProduction";
     public List<ProjectLinkDto> Links { get; set; } = new();
 }
@@ -89,7 +91,7 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
     }
 
     /// <summary>
-    /// Cadastra um novo projeto manualmente com seus links categorizados.
+    /// Cadastra um novo projeto manualmente com seus links categorizados e prazo de entrega.
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<Project>> CreateProject([FromBody] CreateProjectRequest request)
@@ -114,6 +116,7 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
             Title = request.Title.Trim(),
             BriefingText = request.BriefingText?.Trim(),
             ExternalOrderReference = request.ExternalOrderReference?.Trim(),
+            Deadline = request.Deadline,
             CreatedByUserId = request.CreatedByUserId,
             Status = "InProduction",
             IsDeleted = false,
@@ -159,6 +162,7 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         project.Title = request.Title.Trim();
         project.BriefingText = request.BriefingText?.Trim();
         project.ExternalOrderReference = request.ExternalOrderReference?.Trim();
+        project.Deadline = request.Deadline;
         project.Status = request.Status;
         project.UpdatedAt = DateTime.UtcNow;
 

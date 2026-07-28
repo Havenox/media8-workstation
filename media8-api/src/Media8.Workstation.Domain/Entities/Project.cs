@@ -9,6 +9,7 @@ public class Project
     public string Title { get; set; } = string.Empty;
     public string? BriefingText { get; set; }
     public string? ExternalOrderReference { get; set; } // Chave fria / Alias do CRM (ex: #0254 ou ORD-9981)
+    public DateTime? Deadline { get; set; } // Prazo de Entrega do Projeto
     public string Status { get; set; } = "InProduction"; // "Draft", "InProduction", "InReview", "Completed", "Cancelled"
     public bool IsDeleted { get; set; } = false; // Suporte a Soft Delete
     public Guid CreatedByUserId { get; set; }

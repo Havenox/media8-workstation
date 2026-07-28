@@ -53,6 +53,7 @@ public class WorkstationDbContext : DbContext
             entity.HasKey(e => e.ProjectId);
             entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
             entity.Property(e => e.ExternalOrderReference).HasMaxLength(100);
+            entity.Property(e => e.Deadline);
             entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("InProduction");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
 
