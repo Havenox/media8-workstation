@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 2.2.0  
+> *Versão:* 2.3.0  
 > *Status:* Ativo  
 
 ---
@@ -15,14 +15,24 @@ O **Media 8 | Workstation** segue a política de **Zero-Hardcode**. O projeto **
 
 ---
 
-## 2. Diretrizes de Design Visual Premium (Padrão Apple / Media 8 Design System)
+## 2. Endpoint Dedicado de Estatísticas & Métricas (`GET /api/v1/Projects/Stats`)
+
+O Dashboard consome as estatísticas consolidadas da estação a partir de um endpoint dedicado de metadados agregados:
+`GET /api/v1/Projects/Stats`
+
+- **Desempenho Agregado:** Retorna o DTO `ProjectStatsDto` utilizando `CountAsync()` com `AsNoTracking()`, sem carregar entidades pesadas na memória.
+- **Isolamento RBAC por Claims JWT:** Admins obtêm a contagem de toda a produtora. Editores obtêm a contagem restrita aos projetos aos quais pertencem.
+
+---
+
+## 3. Diretrizes de Design Visual Premium (Padrão Apple / Media 8 Design System)
 
 1. **Banimento Estrito de Emojis**:
    - Emojis unicode estão proibidos no código frontend.
    - Toda a representação de mídia, arquivos, status ou ações utiliza exclusivamente ícones vetoriais da biblioteca **Lucide React**.
 2. **Componentes Customizados & Dropdowns (`LinkTypeSelect`)**:
    - Proibido o uso de `<select>` nativo do navegador em formulários da estação.
-   - Os dropdowns devem utilizar componentes baseados em ShadCN UI / Radix (`Popover`/`Select`), com cantos arredondados (`rounded-xl`), sombra (`shadow-xl`), fundo creme (`#FFFBED`) e ícones vetoriais associados a cada opção.
+   - Os dropdowns utilizam componentes baseados em ShadCN UI / Radix (`Popover`/`Select`), com cantos arredondados (`rounded-xl`), sombra (`shadow-xl`), fundo creme (`#FFFBED`) e ícones vetoriais associados a cada opção.
 3. **Hierarquia Tipográfica & Contraste de Hover**:
    - Títulos primários: `font-semibold text-base text-[#400404] tracking-tight`.
    - Textos secundários e descrições: `font-normal text-xs text-[#5C1212]/80`.
@@ -30,7 +40,7 @@ O **Media 8 | Workstation** segue a política de **Zero-Hardcode**. O projeto **
 
 ---
 
-## 3. Padrão Arquitetural `WorkstationBaseController` (`api/v1/[controller]`)
+## 4. Padrão Arquitetural `WorkstationBaseController` (`api/v1/[controller]`)
 
 Todos os controladores da API .NET 10 herdam obrigatoriamente da classe base abstrata **`WorkstationBaseController`**:
 
@@ -46,7 +56,7 @@ public abstract class WorkstationBaseController : ControllerBase
 
 ---
 
-## 4. Histórico de Estudos de Caso
+## 5. Histórico de Estudos de Caso
 
 - **[Estudo de Caso 001](implementations/001-integracao-inicial-workstation-dotnet10.md):** Arquitetura inicial .NET 10, JWT e SignalR.
 - **[Estudo de Caso 002](implementations/002-credenciais-iniciais-admin-dotenv.md):** Injeção de credenciais de Admin via `.env` e Seeding dinâmico.
@@ -57,3 +67,4 @@ public abstract class WorkstationBaseController : ControllerBase
 - **[Estudo de Caso 007](implementations/007-arquitetura-ingestao-links-projeto-autoingest.md):** Arquitetura de Ingestão por Links do Projeto, propriedade AutoIngest e Trigger Auto/Manual.
 - **[Estudo de Caso 008](implementations/008-redesenho-visual-premium-projetos.md):** Redesenho Visual Premium (Padrão Apple) na Gestão de Projetos e Banimento de Emojis.
 - **[Estudo de Caso 009](implementations/009-componente-linktypeselect-icones-lucide-hover.md):** Componente Customizado LinkTypeSelect e Correção de Contraste no Hover.
+- **[Estudo de Caso 010](implementations/010-endpoint-estatisticas-projetos-dashboard.md):** Endpoint Dedicado de Estatísticas (GET /api/v1/Projects/Stats) e Correção dos Indicadores do Dashboard.
