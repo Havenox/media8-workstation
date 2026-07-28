@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { Order, WorkstationAsset, TimecodeMarker, AuthResponse, LoginRequest, User, CreateUserRequest } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
