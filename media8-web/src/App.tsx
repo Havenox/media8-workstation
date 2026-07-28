@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   useNavigate,
+  useLocation,
 } from 'react-router-dom';
 import type { User, Project } from './types';
 import { AuthService, ProjectService, UserService } from './services/api';
@@ -18,16 +19,23 @@ import { UsersPage } from './pages/UsersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { Loader2 } from 'lucide-react';
 
-interface ProtectedRouteProps {
-  user: User;
+interface RequireAuthProps {
+  user: User | null;
   allowedRoles?: string[];
   children: React.ReactNode;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ user, allowedRoles, children }) => {
+const RequireAuth: React.FC<RequireAuthProps> = ({ user, allowedRoles, children }) => {
+  const location = useLocation();
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.Role)) {
     return <Navigate to="/" replace />;
   }
+
   return <>{children}</>;
 };
 
@@ -178,43 +186,66 @@ export function AppContent() {
     );
   }
 
-  if (!currentUser) {
-    return <LoginPage onLoginSuccess={(user) => setCurrentUser(user)} />;
-  }
-
   return (
     <Routes>
+      {/* Route: /login */}
+      <Route
+        path="/login"
+        element={
+          currentUser ? (
+            <Navigate to="/" replace />
+          ) : (
+            <LoginPage
+              onLoginSuccess={(user) => {
+                setCurrentUser(user);
+                navigate('/');
+              }}
+            />
+          )
+        }
+      />
+
+      {/* Protected Routes Layout */}
       <Route
         element={
-          <AppLayout
-            currentUser={currentUser}
-            onLogout={() => {
-              AuthService.logout();
-              setCurrentUser(null);
-            }}
-          />
+          <RequireAuth user={currentUser}>
+            {currentUser && (
+              <AppLayout
+                currentUser={currentUser}
+                onLogout={() => {
+                  AuthService.logout();
+                  setCurrentUser(null);
+                  navigate('/login');
+                }}
+              />
+            )}
+          </RequireAuth>
         }
       >
         <Route
           path="/"
           element={
-            <DashboardPage
-              projects={projects}
-              currentUser={currentUser}
-              onNavigateTab={(tab) => navigate(tab === 'dashboard' ? '/' : `/${tab}`)}
-              onOpenWorkstation={handleOpenWorkstationForProject}
-            />
+            currentUser && (
+              <DashboardPage
+                projects={projects}
+                currentUser={currentUser}
+                onNavigateTab={(tab) => navigate(tab === 'dashboard' ? '/' : `/${tab}`)}
+                onOpenWorkstation={handleOpenWorkstationForProject}
+              />
+            )
           }
         />
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route
           path="/projects"
           element={
-            <ProjectsPage
-              currentUser={currentUser}
-              users={users}
-              onOpenWorkstation={handleOpenWorkstationForProject}
-            />
+            currentUser && (
+              <ProjectsPage
+                currentUser={currentUser}
+                users={users}
+                onOpenWorkstation={handleOpenWorkstationForProject}
+              />
+            )
           }
         />
         <Route
@@ -243,17 +274,20 @@ export function AppContent() {
         <Route
           path="/users"
           element={
-            <ProtectedRoute user={currentUser} allowedRoles={['Admin']}>
-              <UsersPage
-                users={users}
-                projects={projects}
-                currentUser={currentUser}
-                onRefreshUsers={loadUsers}
-              />
-            </ProtectedRoute>
+            currentUser && (
+              <RequireAuth user={currentUser} allowedRoles={['Admin']}>
+                <UsersPage
+                  users={users}
+                  projects={projects}
+                  currentUser={currentUser}
+                  onRefreshUsers={loadUsers}
+                />
+              </RequireAuth>
+            )
           }
         />
-        <Route path="/storage" element={<SettingsPage currentUser={currentUser} />} />
+        <Route path="/config" element={currentUser && <SettingsPage currentUser={currentUser} />} />
+        <Route path="/storage" element={<Navigate to="/config" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

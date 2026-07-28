@@ -36,7 +36,7 @@ const navItems: NavItem[] = [
   { id: 'workstation', path: '/workstation', icon: Film, label: 'Workstation PAM' },
   { id: 'jobs', path: '/jobs', icon: Activity, label: 'Esteira de Ingestão' },
   { id: 'users', path: '/users', icon: Users, label: 'Usuários & Atribuições', roles: ['Admin'] },
-  { id: 'storage', path: '/storage', icon: Settings, label: 'Configurações & Storage' },
+  { id: 'config', path: '/config', icon: Settings, label: 'Configurações' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -133,7 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Footer - Support */}
       <div className="p-4 border-t border-[#5C1212]">
         <button
-          onClick={() => navigate('/storage')}
+          onClick={() => navigate('/config')}
           className={`w-full flex items-center gap-3 py-2 text-xs text-[#FFFBED] font-medium hover:bg-[#5C1212] rounded-xl transition-colors cursor-pointer ${
             collapsed ? 'justify-center px-2' : 'justify-start px-2'
           }`}

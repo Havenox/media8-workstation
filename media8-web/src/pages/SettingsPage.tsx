@@ -22,8 +22,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h2 className="text-2xl font-bold text-[#400404]">Configurações & Purga de Storage</h2>
-        <p className="text-xs text-[#5C1212] font-semibold mt-0.5">
+        <h2 className="text-2xl font-semibold text-[#400404] tracking-tight">Configurações</h2>
+        <p className="text-xs text-[#5C1212]/80 font-normal mt-0.5">
           Gerenciamento de armazenamento em disco, regras de purga defensiva de arquivos RAW e dados de perfil.
         </p>
       </div>
