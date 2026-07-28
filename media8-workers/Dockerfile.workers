@@ -1,0 +1,20 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG WORKER_PROJECT=Media8.Workstation.Worker.Ingestion
+WORKDIR /app
+
+COPY ../media8-api/src/Media8.Workstation.Domain/Media8.Workstation.Domain.csproj ../media8-api/src/Media8.Workstation.Domain/
+COPY ../media8-api/src/Media8.Workstation.Infrastructure/Media8.Workstation.Infrastructure.csproj ../media8-api/src/Media8.Workstation.Infrastructure/
+COPY ./${WORKER_PROJECT}/${WORKER_PROJECT}.csproj ./${WORKER_PROJECT}/
+
+RUN dotnet restore ./${WORKER_PROJECT}/${WORKER_PROJECT}.csproj
+
+COPY . ./
+RUN dotnet publish ./${WORKER_PROJECT}/${WORKER_PROJECT}.csproj -c Release -o /app/out
+
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=build /app/out .
+
+ENTRYPOINT ["dotnet", "Media8.Workstation.Worker.Ingestion.dll"]
