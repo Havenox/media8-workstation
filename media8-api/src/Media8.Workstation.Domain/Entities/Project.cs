@@ -16,23 +16,27 @@ public class Project
     public bool AutoIngest { get; set; } = true; // Ingestão automática ativada por padrão ao registrar links
     public bool IsDeleted { get; set; } = false; // Suporte a Soft Delete
     public Guid CreatedByUserId { get; set; }
+    public Guid? LeadUserId { get; set; } // ID do Editor Responsável do Projeto
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public User CreatedByUser { get; set; } = null!;
+    public User? LeadUser { get; set; }
     public ICollection<ProjectEditor> AssignedEditors { get; set; } = new List<ProjectEditor>();
     public ICollection<WorkstationAsset> Assets { get; set; } = new List<WorkstationAsset>();
     public ICollection<ProjectLink> Links { get; set; } = new List<ProjectLink>();
 }
 
 /// <summary>
-/// Junção RBAC entre Editores e Projetos.
+/// Junção de atribuição entre Editores, Projetos e Funções de Produção (PAM).
 /// </summary>
 public class ProjectEditor
 {
     public Guid ProjectEditorId { get; set; } = Guid.NewGuid();
     public Guid ProjectId { get; set; }
     public Guid UserId { get; set; }
+    public string AssignmentRole { get; set; } = "General"; // "General", "Decoupage", "AudioTreatment", "ColorGrading", "MotionGraphics", "Reviewer"
+    public bool IsLead { get; set; } = false;
     public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
 
     [JsonIgnore]

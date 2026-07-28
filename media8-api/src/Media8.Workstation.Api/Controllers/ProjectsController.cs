@@ -19,6 +19,16 @@ public class ProjectLinkDto
 }
 
 /// <summary>
+/// DTO de requisição para atribuição de editor com Função PAM.
+/// </summary>
+public class ProjectEditorAssignmentDto
+{
+    public Guid UserId { get; set; }
+    public string AssignmentRole { get; set; } = "General"; // "General", "Decoupage", "AudioTreatment", "ColorGrading", "MotionGraphics", "Reviewer"
+    public bool IsLead { get; set; } = false;
+}
+
+/// <summary>
 /// DTO de requisição para criação de novo projeto.
 /// </summary>
 public class CreateProjectRequest
@@ -29,6 +39,8 @@ public class CreateProjectRequest
     public DateTime? Deadline { get; set; } // Prazo de entrega
     public bool AutoIngest { get; set; } = true; // Ativa/desativa disparo automático de ingestão
     public Guid CreatedByUserId { get; set; }
+    public Guid? LeadUserId { get; set; } // Editor Responsável do Projeto
+    public List<ProjectEditorAssignmentDto> AssignedEditors { get; set; } = new();
     public List<ProjectLinkDto> Links { get; set; } = new();
 }
 
@@ -43,6 +55,8 @@ public class UpdateProjectRequest
     public DateTime? Deadline { get; set; }
     public string Status { get; set; } = "InProduction";
     public bool AutoIngest { get; set; } = true;
+    public Guid? LeadUserId { get; set; } // Editor Responsável do Projeto
+    public List<ProjectEditorAssignmentDto> AssignedEditors { get; set; } = new();
     public List<ProjectLinkDto> Links { get; set; } = new();
 }
 
@@ -222,11 +236,46 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
             Deadline = request.Deadline,
             AutoIngest = request.AutoIngest,
             CreatedByUserId = request.CreatedByUserId,
+            LeadUserId = request.LeadUserId,
             Status = "InProduction",
             IsDeleted = false,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+
+        // 1. Process Lead Editor assignment
+        var assignedUserIds = new HashSet<Guid>();
+        if (request.LeadUserId.HasValue && request.LeadUserId.Value != Guid.Empty)
+        {
+            project.AssignedEditors.Add(new ProjectEditor
+            {
+                ProjectEditorId = Guid.NewGuid(),
+                ProjectId = project.ProjectId,
+                UserId = request.LeadUserId.Value,
+                AssignmentRole = "General",
+                IsLead = true,
+                AssignedAt = DateTime.UtcNow
+            });
+            assignedUserIds.Add(request.LeadUserId.Value);
+        }
+
+        // 2. Process Additional Editors assignments
+        foreach (var assignment in request.AssignedEditors)
+        {
+            if (assignment.UserId != Guid.Empty && !assignedUserIds.Contains(assignment.UserId))
+            {
+                project.AssignedEditors.Add(new ProjectEditor
+                {
+                    ProjectEditorId = Guid.NewGuid(),
+                    ProjectId = project.ProjectId,
+                    UserId = assignment.UserId,
+                    AssignmentRole = string.IsNullOrWhiteSpace(assignment.AssignmentRole) ? "General" : assignment.AssignmentRole,
+                    IsLead = false,
+                    AssignedAt = DateTime.UtcNow
+                });
+                assignedUserIds.Add(assignment.UserId);
+            }
+        }
 
         foreach (var linkDto in request.Links)
         {
@@ -260,6 +309,7 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
     {
         var project = await _context.Projects
             .Include(p => p.Links)
+            .Include(p => p.AssignedEditors)
             .FirstOrDefaultAsync(p => p.ProjectId == id && !p.IsDeleted);
 
         if (project == null) return NotFound();
@@ -280,7 +330,44 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         project.Deadline = request.Deadline;
         project.Status = request.Status;
         project.AutoIngest = request.AutoIngest;
+        project.LeadUserId = request.LeadUserId;
         project.UpdatedAt = DateTime.UtcNow;
+
+        // Update AssignedEditors
+        var existingEditors = await _context.ProjectEditors.Where(pe => pe.ProjectId == id).ToListAsync();
+        _context.ProjectEditors.RemoveRange(existingEditors);
+
+        var assignedUserIds = new HashSet<Guid>();
+        if (request.LeadUserId.HasValue && request.LeadUserId.Value != Guid.Empty)
+        {
+            _context.ProjectEditors.Add(new ProjectEditor
+            {
+                ProjectEditorId = Guid.NewGuid(),
+                ProjectId = project.ProjectId,
+                UserId = request.LeadUserId.Value,
+                AssignmentRole = "General",
+                IsLead = true,
+                AssignedAt = DateTime.UtcNow
+            });
+            assignedUserIds.Add(request.LeadUserId.Value);
+        }
+
+        foreach (var assignment in request.AssignedEditors)
+        {
+            if (assignment.UserId != Guid.Empty && !assignedUserIds.Contains(assignment.UserId))
+            {
+                _context.ProjectEditors.Add(new ProjectEditor
+                {
+                    ProjectEditorId = Guid.NewGuid(),
+                    ProjectId = project.ProjectId,
+                    UserId = assignment.UserId,
+                    AssignmentRole = string.IsNullOrWhiteSpace(assignment.AssignmentRole) ? "General" : assignment.AssignmentRole,
+                    IsLead = false,
+                    AssignedAt = DateTime.UtcNow
+                });
+                assignedUserIds.Add(assignment.UserId);
+            }
+        }
 
         var existingLinks = project.Links.ToList();
         _context.ProjectLinks.RemoveRange(existingLinks);

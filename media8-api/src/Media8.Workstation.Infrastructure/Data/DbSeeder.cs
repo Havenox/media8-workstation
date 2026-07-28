@@ -40,6 +40,7 @@ public static class DbSeeder
                 ALTER TABLE ""Projects"" ADD COLUMN IF NOT EXISTS ""Deadline"" timestamp with time zone NULL;
                 ALTER TABLE ""Projects"" ADD COLUMN IF NOT EXISTS ""AutoIngest"" boolean NOT NULL DEFAULT true;
                 ALTER TABLE ""Projects"" ADD COLUMN IF NOT EXISTS ""IsDeleted"" boolean NOT NULL DEFAULT false;
+                ALTER TABLE ""Projects"" ADD COLUMN IF NOT EXISTS ""LeadUserId"" uuid REFERENCES ""Users""(""UserId"") ON DELETE SET NULL;
             ");
 
             // 3. Create ProjectEditors table if missing
@@ -48,8 +49,12 @@ public static class DbSeeder
                     ""ProjectEditorId"" uuid NOT NULL CONSTRAINT ""PK_ProjectEditors"" PRIMARY KEY,
                     ""ProjectId"" uuid NOT NULL CONSTRAINT ""FK_ProjectEditors_Projects_ProjectId"" REFERENCES ""Projects"" (""ProjectId"") ON DELETE CASCADE,
                     ""UserId"" uuid NOT NULL CONSTRAINT ""FK_ProjectEditors_Users_UserId"" REFERENCES ""Users"" (""UserId"") ON DELETE CASCADE,
+                    ""AssignmentRole"" character varying(50) NOT NULL DEFAULT 'General',
+                    ""IsLead"" boolean NOT NULL DEFAULT false,
                     ""AssignedAt"" timestamp with time zone NOT NULL DEFAULT NOW()
                 );
+                ALTER TABLE ""ProjectEditors"" ADD COLUMN IF NOT EXISTS ""AssignmentRole"" character varying(50) NOT NULL DEFAULT 'General';
+                ALTER TABLE ""ProjectEditors"" ADD COLUMN IF NOT EXISTS ""IsLead"" boolean NOT NULL DEFAULT false;
             ");
 
             // 4. Create ProjectLinks table if missing

@@ -75,6 +75,7 @@ public class UsersController(WorkstationDbContext context, IWebHostEnvironment e
                 Email = u.Email,
                 Role = u.Role,
                 AvatarUrl = u.AvatarUrl,
+                AssignedProjectsCount = context.ProjectEditors.Count(pe => pe.UserId == u.UserId && !pe.Project.IsDeleted),
                 CreatedAt = u.CreatedAt
             })
             .ToListAsync();
