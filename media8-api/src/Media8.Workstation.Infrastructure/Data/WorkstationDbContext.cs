@@ -10,6 +10,11 @@ public class WorkstationDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ProjectEditor> ProjectEditors => Set<ProjectEditor>();
+    public DbSet<ProjectLink> ProjectLinks => Set<ProjectLink>();
+
+    // Backward compatibility Set
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderEditor> OrderEditors => Set<OrderEditor>();
     public DbSet<WorkstationAsset> WorkstationAssets => Set<WorkstationAsset>();
@@ -22,6 +27,9 @@ public class WorkstationDbContext : DbContext
 
         // Map Table Names strictly in PascalCase
         modelBuilder.Entity<User>().ToTable("Users");
+        modelBuilder.Entity<Project>().ToTable("Projects");
+        modelBuilder.Entity<ProjectEditor>().ToTable("ProjectEditors");
+        modelBuilder.Entity<ProjectLink>().ToTable("ProjectLinks");
         modelBuilder.Entity<Order>().ToTable("Orders");
         modelBuilder.Entity<OrderEditor>().ToTable("OrderEditors");
         modelBuilder.Entity<WorkstationAsset>().ToTable("WorkstationAssets");
@@ -39,7 +47,52 @@ public class WorkstationDbContext : DbContext
             entity.Property(e => e.Role).HasMaxLength(50).HasDefaultValue("Editor");
         });
 
-        // Order Configuration
+        // Project Configuration
+        modelBuilder.Entity<Project>(entity =>
+        {
+            entity.HasKey(e => e.ProjectId);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.ExternalOrderReference).HasMaxLength(100);
+            entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("InProduction");
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ProjectEditor Junction Configuration
+        modelBuilder.Entity<ProjectEditor>(entity =>
+        {
+            entity.HasKey(e => e.ProjectEditorId);
+            entity.HasIndex(e => new { e.ProjectId, e.UserId }).IsUnique();
+
+            entity.HasOne(e => e.Project)
+                .WithMany(p => p.AssignedEditors)
+                .HasForeignKey(e => e.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ProjectLink Configuration
+        modelBuilder.Entity<ProjectLink>(entity =>
+        {
+            entity.HasKey(e => e.ProjectLinkId);
+            entity.Property(e => e.Url).IsRequired();
+            entity.Property(e => e.LinkType).HasMaxLength(50).HasDefaultValue("Folder");
+
+            entity.HasOne(e => e.Project)
+                .WithMany(p => p.Links)
+                .HasForeignKey(e => e.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Order Configuration (Backward compatibility)
         modelBuilder.Entity<Order>(entity =>
         {
             entity.HasKey(e => e.OrderId);
