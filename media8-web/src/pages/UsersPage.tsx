@@ -389,6 +389,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
                   <th className="p-3.5">Usuário</th>
                   <th className="p-3.5">E-mail</th>
                   <th className="p-3.5">Função</th>
+                  <th className="p-3.5">Projetos Atribuídos</th>
                   <th className="p-3.5">Data de Cadastro</th>
                   <th className="p-3.5 text-right">Ações</th>
                 </tr>
@@ -426,6 +427,9 @@ export const UsersPage: React.FC<UsersPageProps> = ({
                           <span>Editor</span>
                         </Badge>
                       )}
+                    </td>
+                    <td className="p-3.5 font-mono font-medium text-[#400404]">
+                      {u.AssignedProjectsCount ?? 0} {u.AssignedProjectsCount === 1 ? 'Projeto' : 'Projetos'}
                     </td>
                     <td className="p-3.5 font-mono font-normal text-[#5C1212]/80">
                       {new Date(u.CreatedAt).toLocaleDateString('pt-BR')}

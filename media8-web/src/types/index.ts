@@ -3,6 +3,8 @@ export interface User {
   Name: string;
   Email: string;
   Role: 'Admin' | 'Editor';
+  AvatarUrl?: string;
+  AssignedProjectsCount?: number;
   CreatedAt: string;
 }
 
@@ -12,6 +14,7 @@ export interface AuthResponse {
   Name: string;
   Email: string;
   Role: 'Admin' | 'Editor';
+  AvatarUrl?: string;
 }
 
 export interface LoginRequest {
@@ -24,6 +27,7 @@ export interface CreateUserRequest {
   Email: string;
   Password: string;
   Role: 'Admin' | 'Editor';
+  AvatarUrl?: string;
 }
 
 export interface UpdateUserRequest {
@@ -31,6 +35,7 @@ export interface UpdateUserRequest {
   Email: string;
   Role: 'Admin' | 'Editor';
   Password?: string;
+  AvatarUrl?: string;
 }
 
 export interface UserStats {
@@ -53,6 +58,16 @@ export interface ProjectLink {
   ProjectId?: string;
   Url: string;
   LinkType: 'Folder' | 'Video' | 'Audio' | 'Image' | 'PDF' | 'Other';
+}
+
+export interface ProjectEditor {
+  ProjectEditorId?: string;
+  ProjectId?: string;
+  UserId: string;
+  AssignmentRole: 'General' | 'Decoupage' | 'AudioTreatment' | 'ColorGrading' | 'MotionGraphics' | 'Reviewer';
+  IsLead?: boolean;
+  AssignedAt?: string;
+  User?: User;
 }
 
 export interface WorkstationAsset {
@@ -100,9 +115,10 @@ export interface Project {
   Status: 'Draft' | 'InProduction' | 'InReview' | 'Completed' | 'Cancelled';
   AutoIngest?: boolean;
   CreatedByUserId: string;
+  LeadUserId?: string;
   CreatedAt: string;
   UpdatedAt: string;
-  AssignedEditors?: any[];
+  AssignedEditors?: ProjectEditor[];
   Assets?: WorkstationAsset[];
   Links?: ProjectLink[];
 }
@@ -114,6 +130,8 @@ export interface CreateProjectRequest {
   Deadline?: string;
   AutoIngest?: boolean;
   CreatedByUserId: string;
+  LeadUserId?: string;
+  AssignedEditors?: ProjectEditor[];
   Links?: ProjectLink[];
 }
 
@@ -124,6 +142,8 @@ export interface UpdateProjectRequest {
   Deadline?: string;
   Status: string;
   AutoIngest?: boolean;
+  LeadUserId?: string;
+  AssignedEditors?: ProjectEditor[];
   Links?: ProjectLink[];
 }
 
