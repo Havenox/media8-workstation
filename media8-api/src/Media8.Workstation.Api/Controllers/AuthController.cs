@@ -13,9 +13,7 @@ namespace Media8.Workstation.Api.Controllers;
 /// <summary>
 /// Controlador responsável pelo fluxo de autenticação pública e gerenciamento de perfil/senha.
 /// </summary>
-[ApiController]
-[Route("api/[controller]")]
-public class AuthController(WorkstationDbContext context, JwtTokenService tokenService) : ControllerBase
+public class AuthController(WorkstationDbContext context, JwtTokenService tokenService) : WorkstationBaseController
 {
     private static readonly PasswordHasher<User> _passwordHasher = new();
 

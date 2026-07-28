@@ -9,25 +9,21 @@ using Microsoft.EntityFrameworkCore;
 namespace Media8.Workstation.Api.Controllers;
 
 /// <summary>
-/// Controlador restrito a Administradores para listagem e cadastramento exclusivo de novos usuários.
+/// Controlador responsável pelo gerenciamento de Usuários e permissões RBAC.
 /// </summary>
-[ApiController]
-[Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
-public class UsersController(WorkstationDbContext context) : ControllerBase
+[Authorize]
+public class UsersController(WorkstationDbContext context) : WorkstationBaseController
 {
     private static readonly PasswordHasher<User> _passwordHasher = new();
 
     /// <summary>
-    /// Lista todos os usuários cadastrados na plataforma.
+    /// Lista todos os usuários cadastrados no sistema.
     /// </summary>
-    /// <returns>Coleção de UserDto em PascalCase.</returns>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
     {
         var users = await context.Users
-            .AsNoTracking()
-            .OrderBy(u => u.Name)
+            .OrderByDescending(u => u.CreatedAt)
             .Select(u => new UserDto
             {
                 UserId = u.UserId,
@@ -42,32 +38,28 @@ public class UsersController(WorkstationDbContext context) : ControllerBase
     }
 
     /// <summary>
-    /// Cadastra um novo usuário no sistema (Editor ou Admin). Endpoint exclusivo para Administradores.
+    /// Cadastra um novo usuário no sistema (Exclusivo para Administradores).
     /// </summary>
-    /// <param name="request">DTO contendo Nome, Email, Senha e Role do novo usuário.</param>
-    /// <returns>UserDto do usuário recém-criado.</returns>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password) || string.IsNullOrWhiteSpace(request.Name))
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return BadRequest(new { Message = "Nome, Email e Senha são obrigatórios." });
+            return BadRequest(new { Message = "Nome, e-mail e senha são obrigatórios." });
         }
 
-        var emailExists = await context.Users.AnyAsync(u => u.Email.ToLower() == request.Email.Trim().ToLower());
-        if (emailExists)
+        var exists = await context.Users.AnyAsync(u => u.Email.ToLower() == request.Email.Trim().ToLower());
+        if (exists)
         {
-            return BadRequest(new { Message = "Já existe um usuário cadastrado com este e-mail." });
+            return BadRequest(new { Message = "E-mail já cadastrado no sistema." });
         }
-
-        var role = request.Role == "Admin" ? "Admin" : "Editor";
 
         var user = new User
         {
-            UserId = Guid.NewGuid(),
             Name = request.Name.Trim(),
-            Email = request.Email.Trim(),
-            Role = role,
+            Email = request.Email.Trim().ToLower(),
+            Role = string.IsNullOrWhiteSpace(request.Role) ? "Editor" : request.Role,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -76,7 +68,7 @@ public class UsersController(WorkstationDbContext context) : ControllerBase
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetUsers), new UserDto
+        return CreatedAtAction(nameof(GetUsers), new { id = user.UserId }, new UserDto
         {
             UserId = user.UserId,
             Name = user.Name,

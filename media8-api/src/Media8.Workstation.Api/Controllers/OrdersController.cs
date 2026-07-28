@@ -7,30 +7,26 @@ using Microsoft.EntityFrameworkCore;
 namespace Media8.Workstation.Api.Controllers;
 
 /// <summary>
-/// Controlador responsável pelo gerenciamento de Orders (Projetos de Edição) e RBAC.
+/// Controlador responsável pelo gerenciamento de Orders (Compatibilidade com ecossistema).
 /// </summary>
-[ApiController]
-[Route("api/[controller]")]
 [Authorize]
-public class OrdersController(WorkstationDbContext context) : ControllerBase
+public class OrdersController(WorkstationDbContext context) : WorkstationBaseController
 {
     private readonly WorkstationDbContext _context = context;
 
     /// <summary>
-    /// Lista Orders ativas com suporte a filtragem RBAC por usuário e papel.
+    /// Lista as Orders cadastradas no sistema.
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Order>>> GetOrders([FromQuery] Guid? userId, [FromQuery] string? role)
     {
-        IQueryable<Order> query = _context.Orders
-            .Include(o => o.CreatedByUser)
-            .Include(o => o.AssignedEditors)
-                .ThenInclude(ae => ae.User)
-            .Include(o => o.Assets);
+        var query = _context.Orders
+            .Include(o => o.Assets)
+            .AsNoTracking();
 
-        if (string.Equals(role, "Editor", StringComparison.OrdinalIgnoreCase) && userId.HasValue)
+        if (role != "Admin" && userId.HasValue)
         {
-            query = query.Where(o => o.AssignedEditors.Any(ae => ae.UserId == userId.Value));
+            query = query.Where(o => o.AssignedEditors.Any(e => e.UserId == userId.Value));
         }
 
         var orders = await query.OrderByDescending(o => o.CreatedAt).ToListAsync();
@@ -38,36 +34,31 @@ public class OrdersController(WorkstationDbContext context) : ControllerBase
     }
 
     /// <summary>
-    /// Retorna os detalhes de uma Order específica pelo seu ID.
+    /// Retorna detalhes de uma Order específica por ID.
     /// </summary>
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<Order>> GetOrderById(Guid id)
     {
         var order = await _context.Orders
-            .Include(o => o.CreatedByUser)
-            .Include(o => o.AssignedEditors)
-                .ThenInclude(ae => ae.User)
             .Include(o => o.Assets)
-                .ThenInclude(a => a.Markers)
+            .Include(o => o.AssignedEditors)
+                .ThenInclude(e => e.User)
             .FirstOrDefaultAsync(o => o.OrderId == id);
 
-        if (order == null)
-        {
-            return NotFound(new { Message = $"Order com ID '{id}' não foi encontrada." });
-        }
+        if (order == null) return NotFound();
 
         return Ok(order);
     }
 
     /// <summary>
-    /// Cria uma nova Order no banco de dados.
+    /// Cria uma nova Order no sistema.
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<Order>> CreateOrder([FromBody] Order order)
     {
-        if (!ModelState.IsValid)
+        if (string.IsNullOrWhiteSpace(order.Title))
         {
-            return BadRequest(ModelState);
+            return BadRequest(new { Message = "O título da Order é obrigatório." });
         }
 
         order.OrderId = Guid.NewGuid();

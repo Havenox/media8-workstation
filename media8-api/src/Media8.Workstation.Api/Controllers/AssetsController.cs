@@ -20,10 +20,8 @@ public class IngestMediaRequest
 /// <summary>
 /// Controlador responsável pelo gerenciamento de Assets e enfileiramento de Ingestão.
 /// </summary>
-[ApiController]
-[Route("api/[controller]")]
 [Authorize]
-public class AssetsController(WorkstationDbContext context) : ControllerBase
+public class AssetsController(WorkstationDbContext context) : WorkstationBaseController
 {
     private readonly WorkstationDbContext _context = context;
 
@@ -43,39 +41,33 @@ public class AssetsController(WorkstationDbContext context) : ControllerBase
     }
 
     /// <summary>
-    /// Retorna os detalhes de um Asset pelo seu ID.
+    /// Retorna uma mídia por ID.
     /// </summary>
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<WorkstationAsset>> GetAssetById(Guid id)
     {
         var asset = await _context.WorkstationAssets
             .Include(a => a.Markers)
-            .Include(a => a.Jobs)
             .FirstOrDefaultAsync(a => a.AssetId == id);
 
-        if (asset == null)
-        {
-            return NotFound(new { Message = $"Asset com ID '{id}' não foi encontrado." });
-        }
+        if (asset == null) return NotFound();
 
         return Ok(asset);
     }
 
     /// <summary>
-    /// Inicia o processo de ingestão assíncrona de uma mídia remota.
+    /// Registra um novo pedido de ingestão de mídia via link externo.
     /// </summary>
     [HttpPost("Ingest")]
     public async Task<ActionResult<WorkstationAsset>> IngestMedia([FromBody] IngestMediaRequest request)
     {
-        var orderExists = await _context.Orders.AnyAsync(o => o.OrderId == request.OrderId);
-        if (!orderExists)
+        if (string.IsNullOrWhiteSpace(request.ExternalSourceUrl) || string.IsNullOrWhiteSpace(request.Title))
         {
-            return NotFound(new { Message = $"Order com ID '{request.OrderId}' não existe." });
+            return BadRequest(new { Message = "URL do link e Título são obrigatórios." });
         }
 
         var asset = new WorkstationAsset
         {
-            AssetId = Guid.NewGuid(),
             OrderId = request.OrderId,
             Title = request.Title,
             ExternalSourceUrl = request.ExternalSourceUrl,
@@ -84,9 +76,11 @@ public class AssetsController(WorkstationDbContext context) : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
 
+        _context.WorkstationAssets.Add(asset);
+        await _context.SaveChangesAsync();
+
         var job = new MediaProcessingJob
         {
-            JobId = Guid.NewGuid(),
             AssetId = asset.AssetId,
             JobType = "IngestDownload",
             Status = "Pending",
@@ -95,7 +89,6 @@ public class AssetsController(WorkstationDbContext context) : ControllerBase
             UpdatedAt = DateTime.UtcNow
         };
 
-        _context.WorkstationAssets.Add(asset);
         _context.MediaProcessingJobs.Add(job);
         await _context.SaveChangesAsync();
 
