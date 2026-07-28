@@ -245,19 +245,24 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         project.AutoIngest = request.AutoIngest;
         project.UpdatedAt = DateTime.UtcNow;
 
-        _context.ProjectLinks.RemoveRange(project.Links);
+        var existingLinks = project.Links.ToList();
+        _context.ProjectLinks.RemoveRange(existingLinks);
+        project.Links.Clear();
+
         foreach (var linkDto in request.Links)
         {
             if (!string.IsNullOrWhiteSpace(linkDto.Url))
             {
-                project.Links.Add(new ProjectLink
+                var newLink = new ProjectLink
                 {
                     ProjectLinkId = Guid.NewGuid(),
                     ProjectId = project.ProjectId,
                     Url = linkDto.Url.Trim(),
                     LinkType = string.IsNullOrWhiteSpace(linkDto.LinkType) ? "Folder" : linkDto.LinkType,
                     CreatedAt = DateTime.UtcNow
-                });
+                };
+                _context.ProjectLinks.Add(newLink);
+                project.Links.Add(newLink);
             }
         }
 
