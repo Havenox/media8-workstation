@@ -1,7 +1,7 @@
 # Media 8 | Workstation — Banco de Dados & Esquema ERD
 
 > **Modelo Relacional e DDL PostgreSQL**  
-> *Versão:* 1.0.0  
+> *Versão:* 1.1.0  
 > *Convenção:* PascalCase Rigoroso (Nomes de Tabelas e Colunas)  
 
 ---
@@ -10,10 +10,11 @@
 
 ```mermaid
 erDiagram
-    Users ||--o{ Orders : "cria"
-    Users ||--o{ OrderEditors : "é atribuído em"
-    Orders ||--o{ OrderEditors : "possuem editores"
-    Orders ||--o{ WorkstationAssets : "contém mídias"
+    Users ||--o{ Projects : "cria"
+    Users ||--o{ ProjectEditors : "é atribuído em"
+    Projects ||--o{ ProjectEditors : "possuem editores"
+    Projects ||--o{ ProjectLinks : "anexa links"
+    Projects ||--o{ WorkstationAssets : "contém mídias"
     WorkstationAssets ||--o{ TimecodeMarkers : "possui marcadores"
     WorkstationAssets ||--o{ MediaProcessingJobs : "gera tarefas"
     Users ||--o{ TimecodeMarkers : "cria marcadores"
@@ -27,21 +28,32 @@ erDiagram
         timestamp CreatedAt
     }
 
-    Orders {
-        uuid OrderId PK
+    Projects {
+        uuid ProjectId PK
         string Title
         string BriefingText
+        string ExternalOrderReference "Alias CRM ex: #0254"
+        timestamp Deadline "Prazo de Entrega"
         string Status "Draft | InProduction | InReview | Completed | Cancelled"
+        boolean IsDeleted "Soft Delete"
         uuid CreatedByUserId FK
         timestamp CreatedAt
         timestamp UpdatedAt
     }
 
-    OrderEditors {
-        uuid OrderEditorId PK
-        uuid OrderId FK
+    ProjectEditors {
+        uuid ProjectEditorId PK
+        uuid ProjectId FK
         uuid UserId FK
         timestamp AssignedAt
+    }
+
+    ProjectLinks {
+        uuid ProjectLinkId PK
+        uuid ProjectId FK
+        string Url
+        string LinkType "Folder | Video | Audio | Image | PDF | Other"
+        timestamp CreatedAt
     }
 
     WorkstationAssets {
@@ -123,35 +135,49 @@ CREATE TABLE "Users" (
 );
 
 -- -----------------------------------------------------------------------------
--- 2. Tabela: Orders (Projetos de Edição)
+-- 2. Tabela: Projects (Projetos de Edição)
 -- -----------------------------------------------------------------------------
-CREATE TABLE "Orders" (
-    "OrderId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE "Projects" (
+    "ProjectId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     "Title" VARCHAR(255) NOT NULL,
     "BriefingText" TEXT,
-    "Status" VARCHAR(50) NOT NULL DEFAULT 'Draft', -- 'Draft', 'InProduction', 'InReview', 'Completed', 'Cancelled'
+    "ExternalOrderReference" VARCHAR(100),
+    "Deadline" TIMESTAMP WITH TIME ZONE,
+    "Status" VARCHAR(50) NOT NULL DEFAULT 'InProduction', -- 'Draft', 'InProduction', 'InReview', 'Completed', 'Cancelled'
+    "IsDeleted" BOOLEAN NOT NULL DEFAULT FALSE,
     "CreatedByUserId" UUID NOT NULL REFERENCES "Users"("UserId") ON DELETE RESTRICT,
     "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- -----------------------------------------------------------------------------
--- 3. Tabela: OrderEditors (Junção RBAC: Editores Atribuídos a cada Order)
+-- 3. Tabela: ProjectEditors (Junção RBAC: Editores Atribuídos a cada Projeto)
 -- -----------------------------------------------------------------------------
-CREATE TABLE "OrderEditors" (
-    "OrderEditorId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    "OrderId" UUID NOT NULL REFERENCES "Orders"("OrderId") ON DELETE CASCADE,
+CREATE TABLE "ProjectEditors" (
+    "ProjectEditorId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "ProjectId" UUID NOT NULL REFERENCES "Projects"("ProjectId") ON DELETE CASCADE,
     "UserId" UUID NOT NULL REFERENCES "Users"("UserId") ON DELETE CASCADE,
     "AssignedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "UQ_OrderEditors_Order_User" UNIQUE ("OrderId", "UserId")
+    CONSTRAINT "UQ_ProjectEditors_Project_User" UNIQUE ("ProjectId", "UserId")
 );
 
 -- -----------------------------------------------------------------------------
--- 4. Tabela: WorkstationAssets (Mídias da Order)
+-- 4. Tabela: ProjectLinks (Links Externos e Pastas do Projeto)
+-- -----------------------------------------------------------------------------
+CREATE TABLE "ProjectLinks" (
+    "ProjectLinkId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "ProjectId" UUID NOT NULL REFERENCES "Projects"("ProjectId") ON DELETE CASCADE,
+    "Url" TEXT NOT NULL,
+    "LinkType" VARCHAR(50) NOT NULL DEFAULT 'Folder', -- 'Folder', 'Video', 'Audio', 'Image', 'PDF', 'Other'
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- -----------------------------------------------------------------------------
+-- 5. Tabela: WorkstationAssets (Mídias do Projeto)
 -- -----------------------------------------------------------------------------
 CREATE TABLE "WorkstationAssets" (
     "AssetId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    "OrderId" UUID NOT NULL REFERENCES "Orders"("OrderId") ON DELETE CASCADE,
+    "OrderId" UUID REFERENCES "Projects"("ProjectId") ON DELETE CASCADE,
     "Title" VARCHAR(255) NOT NULL,
     "OriginalFileName" VARCHAR(255) NOT NULL,
     "ExternalSourceUrl" TEXT NOT NULL,
@@ -171,7 +197,7 @@ CREATE TABLE "WorkstationAssets" (
 );
 
 -- -----------------------------------------------------------------------------
--- 5. Tabela: TimecodeMarkers (Sub-clips e Cortes IN/OUT)
+-- 6. Tabela: TimecodeMarkers (Sub-clips e Cortes IN/OUT)
 -- -----------------------------------------------------------------------------
 CREATE TABLE "TimecodeMarkers" (
     "MarkerId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -188,7 +214,7 @@ CREATE TABLE "TimecodeMarkers" (
 );
 
 -- -----------------------------------------------------------------------------
--- 6. Tabela: MediaProcessingJobs (Fila de Tarefas Database-as-a-Queue)
+-- 7. Tabela: MediaProcessingJobs (Fila de Tarefas Database-as-a-Queue)
 -- -----------------------------------------------------------------------------
 CREATE TABLE "MediaProcessingJobs" (
     "JobId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -208,41 +234,15 @@ CREATE TABLE "MediaProcessingJobs" (
 -- -----------------------------------------------------------------------------
 -- ÍNDICES DE ALTA PERFORMANCE
 -- -----------------------------------------------------------------------------
-
--- Índice Parcial Crítico para Consumo de Fila com SKIP LOCKED (Worker Processing)
 CREATE INDEX "IX_MediaProcessingJobs_Queue"
 ON "MediaProcessingJobs" ("Status", "Priority" DESC, "CreatedAt" ASC)
 WHERE "Status" = 'Pending';
 
--- Índices de Chaves Estrangeiras e Consultas Frequentes
-CREATE INDEX "IX_Orders_CreatedByUserId" ON "Orders" ("CreatedByUserId");
-CREATE INDEX "IX_OrderEditors_OrderId" ON "Orders" ("OrderId");
-CREATE INDEX "IX_OrderEditors_UserId" ON "OrderEditors" ("UserId");
+CREATE INDEX "IX_Projects_CreatedByUserId" ON "Projects" ("CreatedByUserId");
+CREATE INDEX "IX_ProjectEditors_ProjectId" ON "ProjectEditors" ("ProjectId");
+CREATE INDEX "IX_ProjectEditors_UserId" ON "ProjectEditors" ("UserId");
+CREATE INDEX "IX_ProjectLinks_ProjectId" ON "ProjectLinks" ("ProjectId");
 CREATE INDEX "IX_WorkstationAssets_OrderId" ON "WorkstationAssets" ("OrderId");
 CREATE INDEX "IX_WorkstationAssets_Status" ON "WorkstationAssets" ("Status");
 CREATE INDEX "IX_TimecodeMarkers_AssetId" ON "TimecodeMarkers" ("AssetId");
-```
-
----
-
-## 3. Mecânica do Consumo da Fila (`SKIP LOCKED`)
-
-Os Workers em C# .NET 10 executam a consulta SQL atômica abaixo para reservar e capturar tarefas pendentes sem bloqueios ou colisões entre múltiplos containers:
-
-```sql
-UPDATE "MediaProcessingJobs"
-SET "Status" = 'Processing',
-    "LockedByWorkerId" = @WorkerId,
-    "LockedAt" = NOW(),
-    "Attempts" = "Attempts" + 1,
-    "UpdatedAt" = NOW()
-WHERE "JobId" = (
-    SELECT "JobId"
-    FROM "MediaProcessingJobs"
-    WHERE "Status" = 'Pending'
-    ORDER BY "Priority" DESC, "CreatedAt" ASC
-    FOR UPDATE SKIP LOCKED
-    LIMIT 1
-)
-RETURNING "JobId", "AssetId", "JobType", "Attempts";
 ```
