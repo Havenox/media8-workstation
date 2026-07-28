@@ -6,6 +6,7 @@ import {
   Play,
   Loader2,
   Trash2,
+  Edit,
   Link2,
   Film,
   FileText,
@@ -16,15 +17,17 @@ import {
   ExternalLink,
   Calendar as CalendarIcon,
   Clock,
+  Zap,
+  CheckCircle2,
 } from 'lucide-react';
 import { format, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { Project, ProjectLink, User, PagedResult } from '../types';
+import type { Project, ProjectLink, User } from '../types';
 import { ProjectService } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
 import { Calendar } from '../components/ui/calendar';
+import { LinkTypeSelect, LinkTypeOption } from '../components/LinkTypeSelect';
 import {
   Popover,
   PopoverContent,
@@ -48,12 +51,11 @@ interface ProjectsPageProps {
 interface FormLinkItem {
   id: string;
   url: string;
-  linkType: 'Folder' | 'Video' | 'Audio' | 'Image' | 'PDF' | 'Other';
+  linkType: LinkTypeOption;
 }
 
 export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   currentUser,
-  users,
   onOpenWorkstation,
 }) => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -73,13 +75,27 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const [briefingText, setBriefingText] = useState('');
   const [externalOrderReference, setExternalOrderReference] = useState('');
   const [selectedDeadline, setSelectedDeadline] = useState<Date | undefined>(undefined);
+  const [autoIngest, setAutoIngest] = useState<boolean>(true);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  // Edit Project Modal State
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBriefingText, setEditBriefingText] = useState('');
+  const [editExternalOrderReference, setEditExternalOrderReference] = useState('');
+  const [editDeadline, setEditDeadline] = useState<Date | undefined>(undefined);
+  const [editStatus, setEditStatus] = useState<string>('InProduction');
+  const [editAutoIngest, setEditAutoIngest] = useState<boolean>(true);
+  const [editLinkItems, setEditLinkItems] = useState<FormLinkItem[]>([]);
 
   const [linkItems, setLinkItems] = useState<FormLinkItem[]>([
     { id: 'link-1', url: '', linkType: 'Folder' },
   ]);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [triggeringIngestId, setTriggeringIngestId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   const observerTarget = useRef<HTMLDivElement | null>(null);
   const today = startOfDay(new Date());
@@ -165,32 +181,57 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   }, [hasNextPage, isFetchingMore, isLoading, currentPage]);
 
   // Dynamic Links Handler
-  const handleAddLinkField = () => {
-    setLinkItems((prev) => [
-      ...prev,
-      { id: `link-${Date.now()}-${Math.random()}`, url: '', linkType: 'Folder' },
-    ]);
-  };
-
-  const handleRemoveLinkField = (id: string) => {
-    if (linkItems.length === 1) {
-      setLinkItems([{ id: 'link-1', url: '', linkType: 'Folder' }]);
-      return;
+  const handleAddLinkField = (isEdit: boolean = false) => {
+    const newItem: FormLinkItem = {
+      id: `link-${Date.now()}-${Math.random()}`,
+      url: '',
+      linkType: 'Folder',
+    };
+    if (isEdit) {
+      setEditLinkItems((prev) => [...prev, newItem]);
+    } else {
+      setLinkItems((prev) => [...prev, newItem]);
     }
-    setLinkItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleLinkChange = (id: string, field: 'url' | 'linkType', value: string) => {
-    setLinkItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
-    );
+  const handleRemoveLinkField = (id: string, isEdit: boolean = false) => {
+    if (isEdit) {
+      setEditLinkItems((prev) => prev.filter((item) => item.id !== id));
+    } else {
+      if (linkItems.length === 1) {
+        setLinkItems([{ id: 'link-1', url: '', linkType: 'Folder' }]);
+        return;
+      }
+      setLinkItems((prev) => prev.filter((item) => item.id !== id));
+    }
+  };
+
+  const handleLinkChange = (
+    id: string,
+    field: 'url' | 'linkType',
+    value: string,
+    isEdit: boolean = false
+  ) => {
+    if (isEdit) {
+      setEditLinkItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      );
+    } else {
+      setLinkItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      );
+    }
   };
 
   // Quick Deadline Presets
-  const setQuickDeadline = (days: number) => {
+  const setQuickDeadline = (days: number, isEdit: boolean = false) => {
     const target = addDays(new Date(), days);
-    setSelectedDeadline(target);
-    setIsCalendarOpen(false);
+    if (isEdit) {
+      setEditDeadline(target);
+    } else {
+      setSelectedDeadline(target);
+      setIsCalendarOpen(false);
+    }
   };
 
   // Create Project Submit Handler
@@ -203,53 +244,131 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
       return;
     }
 
-    // Validate Deadline (Must not be in the past)
     if (selectedDeadline && startOfDay(selectedDeadline) < today) {
       setValidationError('O prazo de entrega não pode ser uma data passada.');
       return;
     }
 
-    // Validate URLs
     const validLinks: ProjectLink[] = [];
     for (const item of linkItems) {
       const trimmedUrl = item.url.trim();
       if (trimmedUrl) {
         if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
-          setValidationError(`A URL "${trimmedUrl}" é inválida. Certifique-se de incluir http:// ou https://`);
+          setValidationError(`A URL "${trimmedUrl}" é inválida. Inclua http:// ou https://`);
           return;
         }
-        validLinks.push({
-          Url: trimmedUrl,
-          LinkType: item.linkType,
-        });
+        validLinks.push({ Url: trimmedUrl, LinkType: item.linkType });
       }
     }
 
     try {
-      setIsCreating(true);
+      setIsSaving(true);
       await ProjectService.createProject({
         Title: title.trim(),
         BriefingText: briefingText.trim(),
         ExternalOrderReference: externalOrderReference.trim() || undefined,
         Deadline: selectedDeadline ? selectedDeadline.toISOString() : undefined,
+        AutoIngest: autoIngest,
         CreatedByUserId: currentUser.UserId,
         Links: validLinks,
       });
 
-      // Reset form
       setTitle('');
       setBriefingText('');
       setExternalOrderReference('');
       setSelectedDeadline(undefined);
+      setAutoIngest(true);
       setLinkItems([{ id: 'link-1', url: '', linkType: 'Folder' }]);
       setIsCreateModalOpen(false);
       fetchInitialProjects();
     } catch (err: any) {
       setValidationError(
-        err.response?.data?.Message || 'Erro ao criar o Projeto. Verifique os dados informados.'
+        err.response?.data?.Message || 'Erro ao criar o Projeto. Verifique os dados.'
       );
     } finally {
-      setIsCreating(false);
+      setIsSaving(false);
+    }
+  };
+
+  // Open Edit Modal
+  const handleOpenEditModal = (proj: Project) => {
+    setEditingProject(proj);
+    setEditTitle(proj.Title);
+    setEditBriefingText(proj.BriefingText || '');
+    setEditExternalOrderReference(proj.ExternalOrderReference || '');
+    setEditDeadline(proj.Deadline ? new Date(proj.Deadline) : undefined);
+    setEditStatus(proj.Status);
+    setEditAutoIngest(proj.AutoIngest ?? true);
+
+    const existingLinks: FormLinkItem[] = (proj.Links || []).map((l, idx) => ({
+      id: `edit-link-${idx}-${l.ProjectLinkId}`,
+      url: l.Url,
+      linkType: l.LinkType as any,
+    }));
+
+    setEditLinkItems(existingLinks.length > 0 ? existingLinks : [{ id: 'edit-link-1', url: '', linkType: 'Folder' }]);
+    setIsEditModalOpen(true);
+  };
+
+  // Update Project Submit Handler
+  const handleUpdateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProject) return;
+    setValidationError(null);
+
+    if (!editTitle.trim()) {
+      setValidationError('O título do projeto é obrigatório.');
+      return;
+    }
+
+    const validLinks: ProjectLink[] = [];
+    for (const item of editLinkItems) {
+      const trimmedUrl = item.url.trim();
+      if (trimmedUrl) {
+        if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+          setValidationError(`A URL "${trimmedUrl}" é inválida. Inclua http:// ou https://`);
+          return;
+        }
+        validLinks.push({ Url: trimmedUrl, LinkType: item.linkType });
+      }
+    }
+
+    try {
+      setIsSaving(true);
+      await ProjectService.updateProject(editingProject.ProjectId, {
+        Title: editTitle.trim(),
+        BriefingText: editBriefingText.trim(),
+        ExternalOrderReference: editExternalOrderReference.trim() || undefined,
+        Deadline: editDeadline ? editDeadline.toISOString() : undefined,
+        Status: editStatus,
+        AutoIngest: editAutoIngest,
+        Links: validLinks,
+      });
+
+      setIsEditModalOpen(false);
+      setEditingProject(null);
+      fetchInitialProjects();
+    } catch (err: any) {
+      setValidationError(err.response?.data?.Message || 'Erro ao atualizar o projeto.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Trigger Manual Ingest Handler
+  const handleTriggerIngest = async (projectId: string) => {
+    try {
+      setTriggeringIngestId(projectId);
+      setFeedbackMessage(null);
+      const res = await ProjectService.triggerProjectIngest(projectId);
+      setFeedbackMessage(
+        `Ingestão iniciada! ${res.EnqueuedCount} mídias enfileiradas na esteira (${res.SkippedCount} já processadas).`
+      );
+      fetchInitialProjects();
+    } catch (err) {
+      alert('Erro ao disparar ingestão das mídias.');
+    } finally {
+      setTriggeringIngestId(null);
     }
   };
 
@@ -257,44 +376,70 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
     if (!confirm('Deseja realmente remover este projeto?')) return;
 
     try {
-      await ProjectService.deleteProject(projectId, true); // Soft Delete
+      await ProjectService.deleteProject(projectId, true);
       fetchInitialProjects();
     } catch (err) {
       alert('Erro ao remover o projeto.');
     }
   };
 
+  // Subtle Minimalist Status Badges
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Draft':
-        return <Badge variant="secondary" className="bg-gray-200 text-gray-900 border-gray-400 font-bold">Rascunho</Badge>;
+        return (
+          <span className="text-[11px] font-medium text-gray-700 bg-gray-100 border border-gray-300 px-2 py-0.5 rounded-full">
+            Rascunho
+          </span>
+        );
       case 'InProduction':
-        return <Badge className="bg-amber-200 text-amber-950 border-amber-400 font-bold">Em Produção</Badge>;
+        return (
+          <span className="text-[11px] font-medium text-amber-900 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+            Em Produção
+          </span>
+        );
       case 'InReview':
-        return <Badge className="bg-blue-200 text-blue-950 border-blue-400 font-bold">Em Revisão</Badge>;
+        return (
+          <span className="text-[11px] font-medium text-blue-900 bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 rounded-full">
+            Em Revisão
+          </span>
+        );
       case 'Completed':
-        return <Badge className="bg-emerald-200 text-emerald-950 border-emerald-400 font-bold">Concluído</Badge>;
+        return (
+          <span className="text-[11px] font-medium text-emerald-900 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
+            Concluído
+          </span>
+        );
       case 'Cancelled':
-        return <Badge variant="destructive" className="font-bold">Cancelado</Badge>;
+        return (
+          <span className="text-[11px] font-medium text-red-900 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">
+            Cancelado
+          </span>
+        );
       default:
-        return <Badge variant="outline" className="font-bold">{status}</Badge>;
+        return (
+          <span className="text-[11px] font-medium text-[#400404] bg-[#400404]/5 border border-[#400404]/15 px-2 py-0.5 rounded-full">
+            {status}
+          </span>
+        );
     }
   };
 
+  // Lucide Vector Icons inheriting parent currentColor smoothly on hover
   const getLinkIcon = (type: string) => {
     switch (type) {
       case 'Folder':
-        return <FolderKanban className="w-3.5 h-3.5 text-amber-800" />;
+        return <FolderKanban className="w-3.5 h-3.5 shrink-0 transition-colors" />;
       case 'Video':
-        return <Video className="w-3.5 h-3.5 text-blue-800" />;
+        return <Video className="w-3.5 h-3.5 shrink-0 transition-colors" />;
       case 'Audio':
-        return <Music className="w-3.5 h-3.5 text-purple-800" />;
+        return <Music className="w-3.5 h-3.5 shrink-0 transition-colors" />;
       case 'Image':
-        return <ImageIcon className="w-3.5 h-3.5 text-emerald-800" />;
+        return <ImageIcon className="w-3.5 h-3.5 shrink-0 transition-colors" />;
       case 'PDF':
-        return <FileText className="w-3.5 h-3.5 text-red-800" />;
+        return <FileText className="w-3.5 h-3.5 shrink-0 transition-colors" />;
       default:
-        return <Link2 className="w-3.5 h-3.5 text-[#400404]" />;
+        return <Link2 className="w-3.5 h-3.5 shrink-0 transition-colors" />;
     }
   };
 
@@ -303,8 +448,8 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
       {/* Header Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-[#400404]">Projetos de Edição</h2>
-          <p className="text-xs text-[#5C1212] font-semibold mt-0.5">
+          <h2 className="text-2xl font-semibold text-[#400404] tracking-tight">Projetos de Edição</h2>
+          <p className="text-xs text-[#5C1212]/80 font-normal mt-0.5">
             Gerencie os projetos locais da estação e atribuições de editores. Total: {totalCount} projetos.
           </p>
         </div>
@@ -312,30 +457,38 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
         {currentUser.Role === 'Admin' && (
           <Button
             onClick={() => setIsCreateModalOpen(true)}
-            className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-semibold text-xs py-2.5 px-4 rounded-lg shadow-md flex items-center gap-2 cursor-pointer"
+            className="group bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-2.5 px-4 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 transition-colors" />
             <span>Novo Projeto</span>
           </Button>
         )}
       </div>
 
+      {feedbackMessage && (
+        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-medium text-emerald-900 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+            <span>{feedbackMessage}</span>
+          </div>
+          <button onClick={() => setFeedbackMessage(null)} className="text-xs text-emerald-800 underline font-medium cursor-pointer">Fechar</button>
+        </div>
+      )}
+
       {/* Search & Status Filters */}
-      <div className="bg-white p-4 rounded-xl border border-[#400404]/20 shadow-sm space-y-3">
+      <div className="bg-white p-3.5 rounded-xl border border-[#400404]/15 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Search bar */}
           <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-[#400404] absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#400404]/50 absolute left-3 top-1/2 -translate-y-1/2" />
             <Input
               type="text"
               placeholder="Buscar projetos, briefings ou #CRM Ref..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-[#FFFBED] text-xs font-medium text-[#400404] border-[#400404]/25"
+              className="pl-9 bg-[#FFFBED]/50 text-xs font-normal text-[#400404] border-[#400404]/15 rounded-lg focus:border-[#400404]"
             />
           </div>
 
-          {/* Filter Pills */}
           <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
             {[
               { id: 'ALL', label: 'Todos' },
@@ -347,10 +500,10 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setFilterStatus(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
                   filterStatus === tab.id
-                    ? 'bg-[#400404] text-[#FFFBED] shadow-sm'
-                    : 'bg-[#FFFBED] text-[#400404] hover:bg-[#400404]/10 border border-[#400404]/20'
+                    ? 'bg-[#400404] text-[#FFFBED] shadow-xs'
+                    : 'bg-[#FFFBED]/60 text-[#400404]/80 hover:bg-[#400404]/5 border border-[#400404]/15'
                 }`}
               >
                 {tab.label}
@@ -362,15 +515,15 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
       {/* Projects Grid */}
       {isLoading ? (
-        <div className="bg-white p-12 rounded-xl border border-[#400404]/20 text-center text-[#400404] space-y-3 shadow-sm flex flex-col items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#400404]" />
-          <p className="text-xs font-bold">Carregando projetos...</p>
+        <div className="bg-white p-12 rounded-xl border border-[#400404]/15 text-center text-[#400404] space-y-3 shadow-xs flex flex-col items-center justify-center">
+          <Loader2 className="w-7 h-7 animate-spin text-[#400404]/70" />
+          <p className="text-xs font-medium">Carregando projetos...</p>
         </div>
       ) : projectsList.length === 0 ? (
-        <div className="bg-white p-12 rounded-xl border border-[#400404]/20 text-center text-[#400404] space-y-3 shadow-sm">
-          <FolderKanban className="w-10 h-10 mx-auto text-[#400404]" />
-          <p className="text-sm font-bold">Nenhum projeto encontrado nesta categoria.</p>
-          <p className="text-xs text-[#5C1212] font-semibold">
+        <div className="bg-white p-12 rounded-xl border border-[#400404]/15 text-center text-[#400404] space-y-3 shadow-xs">
+          <FolderKanban className="w-10 h-10 mx-auto text-[#400404]/40" />
+          <p className="text-sm font-semibold">Nenhum projeto encontrado nesta categoria.</p>
+          <p className="text-xs text-[#5C1212]/70 font-normal">
             Clique no botão "Novo Projeto" acima para cadastrar manualmente um novo trabalho.
           </p>
         </div>
@@ -380,39 +533,54 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             {projectsList.map((proj) => (
               <div
                 key={proj.ProjectId}
-                className="bg-white rounded-xl border border-[#400404]/20 shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col justify-between space-y-4"
+                className="bg-white rounded-xl border border-[#400404]/15 shadow-xs hover:shadow-sm transition-all p-5 flex flex-col justify-between space-y-4"
               >
                 <div>
-                  {/* Header Card */}
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-bold text-base text-[#400404] truncate">{proj.Title}</h3>
+                    <h3 className="font-semibold text-base text-[#400404] truncate tracking-tight">{proj.Title}</h3>
                     {getStatusBadge(proj.Status)}
                   </div>
 
                   <div className="flex flex-wrap gap-2 items-center mb-3">
                     {proj.ExternalOrderReference && (
-                      <div className="text-xs font-mono font-bold text-purple-950 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 inline-block">
-                        CRM Order Ref: #{proj.ExternalOrderReference}
+                      <div className="text-[11px] font-mono font-medium text-[#400404] bg-[#400404]/5 px-2 py-0.5 rounded border border-[#400404]/15 inline-block">
+                        CRM Ref: #{proj.ExternalOrderReference}
                       </div>
                     )}
 
                     {proj.Deadline && (
-                      <div className="text-xs font-bold text-amber-950 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 inline-flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-amber-900" />
+                      <div className="text-[11px] font-medium text-[#400404] bg-[#400404]/5 px-2 py-0.5 rounded border border-[#400404]/15 inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-[#400404]/70 shrink-0" />
                         <span>Prazo: {format(new Date(proj.Deadline), 'dd/MM/yyyy')}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Briefing snippet */}
-                  <p className="text-xs text-[#400404] font-medium line-clamp-3 bg-[#FFFBED] p-3 rounded-lg border border-[#400404]/15 leading-relaxed mb-3">
+                  <p className="text-xs text-[#5C1212] font-normal line-clamp-3 bg-[#FFFBED]/60 p-3 rounded-lg border border-[#400404]/10 leading-relaxed mb-3">
                     {proj.BriefingText || 'Nenhum briefing especificado.'}
                   </p>
 
-                  {/* Project Links Badge List */}
                   {proj.Links && proj.Links.length > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      <p className="text-[11px] font-bold text-[#400404] uppercase">Links Anexados:</p>
+                    <div className="space-y-2 pt-1 border-t border-[#400404]/10">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-semibold text-[#400404]/80 uppercase tracking-wider">
+                          Links Anexados ({proj.Links.length})
+                        </p>
+
+                        <button
+                          onClick={() => handleTriggerIngest(proj.ProjectId)}
+                          disabled={triggeringIngestId === proj.ProjectId}
+                          className="group inline-flex items-center gap-1.5 text-[11px] font-medium text-[#400404] bg-[#FFFBED] hover:bg-[#400404] hover:text-[#FFFBED] border border-[#400404]/20 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                        >
+                          {triggeringIngestId === proj.ProjectId ? (
+                            <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                          ) : (
+                            <Zap className="w-3 h-3 text-[#400404] group-hover:text-[#FFFBED] shrink-0 transition-colors" />
+                          )}
+                          <span>Iniciar Ingestão</span>
+                        </button>
+                      </div>
+
                       <div className="flex flex-wrap gap-1.5">
                         {proj.Links.map((lnk, idx) => (
                           <a
@@ -420,11 +588,11 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                             href={lnk.Url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold bg-[#FFFBED] text-[#400404] px-2 py-0.5 rounded border border-[#400404]/20 hover:bg-[#400404] hover:text-[#FFFBED] transition-colors"
+                            className="group inline-flex items-center gap-1.5 text-[11px] font-medium bg-[#FFFBED]/80 text-[#400404] px-2.5 py-1 rounded-md border border-[#400404]/15 hover:bg-[#400404] hover:text-[#FFFBED] transition-colors"
                           >
                             {getLinkIcon(lnk.LinkType)}
                             <span className="truncate max-w-[120px]">{lnk.LinkType}</span>
-                            <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                            <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 transition-all shrink-0" />
                           </a>
                         ))}
                       </div>
@@ -432,31 +600,39 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   )}
                 </div>
 
-                {/* Card Footer */}
-                <div className="pt-3 border-t border-[#400404]/15 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 text-xs text-[#400404] font-bold font-mono">
-                      <Film className="w-4 h-4 text-[#400404]" />
+                <div className="pt-3 border-t border-[#400404]/10 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-xs text-[#400404]/80 font-medium font-mono">
+                      <Film className="w-3.5 h-3.5 text-[#400404]/60" />
                       <span>{proj.Assets?.length || 0} mídias</span>
                     </div>
 
                     {currentUser.Role === 'Admin' && (
-                      <button
-                        onClick={() => handleDeleteProject(proj.ProjectId)}
-                        title="Excluir Projeto"
-                        className="text-red-700 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1 ml-1">
+                        <button
+                          onClick={() => handleOpenEditModal(proj)}
+                          title="Editar Projeto"
+                          className="text-[#400404]/70 hover:text-[#400404] hover:bg-[#400404]/10 p-1 rounded transition-colors cursor-pointer"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProject(proj.ProjectId)}
+                          title="Excluir Projeto"
+                          className="text-red-700/80 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     )}
                   </div>
 
                   <Button
                     onClick={() => onOpenWorkstation(proj)}
                     size="sm"
-                    className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-semibold text-xs py-1.5 px-3 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                    className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-1.5 px-3 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <Play className="w-3 h-3 fill-current" />
                     <span>Abrir na Workstation</span>
                   </Button>
                 </div>
@@ -464,11 +640,10 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             ))}
           </div>
 
-          {/* Target Element for Intersection Observer Infinite Scroll */}
           <div ref={observerTarget} className="py-4 text-center">
             {isFetchingMore && (
-              <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#400404]">
-                <Loader2 className="w-5 h-5 animate-spin" />
+              <div className="flex items-center justify-center gap-2 text-xs font-medium text-[#400404]">
+                <Loader2 className="w-4 h-4 animate-spin text-[#400404]" />
                 <span>Carregando mais 20 projetos...</span>
               </div>
             )}
@@ -476,62 +651,58 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
         </div>
       )}
 
-      {/* Modal: Criar Novo Projeto Manual */}
+      {/* Modal: Criar Novo Projeto */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="bg-[#FFFBED] border border-[#400404]/30 text-[#400404] max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-[#FFFBED] border border-[#400404]/25 text-[#400404] max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#400404]">Cadastrar Novo Projeto</DialogTitle>
-            <DialogDescription className="text-xs text-[#5C1212] font-semibold">
-              Cadastre um novo projeto de edição manualmente na Workstation. Metadados comerciais poderão ser vinculados futuramente.
+            <DialogTitle className="text-lg font-semibold text-[#400404] tracking-tight">Cadastrar Novo Projeto</DialogTitle>
+            <DialogDescription className="text-xs text-[#5C1212]/80 font-normal">
+              Cadastre um novo projeto de edição manualmente com links de mídias e chave CRM.
             </DialogDescription>
           </DialogHeader>
 
           {validationError && (
-            <div className="p-3 bg-red-100 border border-red-300 rounded-lg text-xs font-bold text-red-950 flex items-center gap-2">
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs font-medium text-red-950 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-700" />
               <span>{validationError}</span>
             </div>
           )}
 
           <form onSubmit={handleCreateProject} className="space-y-4 py-2">
-            {/* Campo: Título */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#400404]">Título do Projeto *</label>
+              <label className="text-xs font-semibold text-[#400404]">Título do Projeto *</label>
               <Input
                 type="text"
                 placeholder="Ex: Campanha Institucional 2026"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
-                className="bg-white text-xs font-medium text-[#400404]"
+                className="bg-white text-xs font-normal text-[#400404] border-[#400404]/20 rounded-lg"
               />
             </div>
 
-            {/* Grid: ID do Pedido + Prazo de Entrega */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Campo: ID do Pedido / CRM Reference */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#400404]">ID do Pedido (Opcional - CRM Alias)</label>
+                <label className="text-xs font-semibold text-[#400404]">ID do Pedido (Opcional - CRM Ref)</label>
                 <Input
                   type="text"
                   placeholder="Ex: #0254 ou ORD-88492"
                   value={externalOrderReference}
                   onChange={(e) => setExternalOrderReference(e.target.value)}
-                  className="bg-white text-xs font-mono font-medium text-[#400404]"
+                  className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 rounded-lg"
                 />
               </div>
 
-              {/* Campo: Prazo de Entrega com Calendário Estilizado ShadCN */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#400404]">Prazo de Entrega</label>
+                <label className="text-xs font-semibold text-[#400404]">Prazo de Entrega</label>
                 <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="w-full flex items-center justify-between p-2.5 bg-white border border-[#400404]/25 rounded-lg text-xs font-bold text-[#400404] hover:border-[#400404] transition-colors focus:ring-2 focus:ring-[#400404] cursor-pointer"
+                      className="w-full flex items-center justify-between p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] hover:border-[#400404] transition-colors focus:ring-2 focus:ring-[#400404] cursor-pointer"
                     >
                       <span className="flex items-center gap-2">
-                        <CalendarIcon className="w-4 h-4 text-[#400404]" />
+                        <CalendarIcon className="w-4 h-4 text-[#400404]/70" />
                         {selectedDeadline ? (
                           format(selectedDeadline, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                         ) : (
@@ -541,42 +712,16 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                     </button>
                   </PopoverTrigger>
                   <PopoverContent
-                    className="w-auto p-0 bg-[#FFFBED] border border-[#400404]/30 shadow-xl rounded-xl overflow-hidden"
+                    className="w-auto p-0 bg-[#FFFBED] border border-[#400404]/25 shadow-xl rounded-xl overflow-hidden"
                     align="start"
                   >
-                    {/* Presets Rápidos */}
                     <div className="p-2 border-b border-[#400404]/15 flex items-center gap-1.5 bg-[#400404]/5">
-                      <button
-                        type="button"
-                        onClick={() => setQuickDeadline(0)}
-                        className="px-2 py-1 text-[11px] font-bold bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 transition-colors cursor-pointer"
-                      >
-                        Hoje
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQuickDeadline(3)}
-                        className="px-2 py-1 text-[11px] font-bold bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 transition-colors cursor-pointer"
-                      >
-                        +3 Dias
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQuickDeadline(7)}
-                        className="px-2 py-1 text-[11px] font-bold bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 transition-colors cursor-pointer"
-                      >
-                        +7 Dias
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQuickDeadline(15)}
-                        className="px-2 py-1 text-[11px] font-bold bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 transition-colors cursor-pointer"
-                      >
-                        +15 Dias
-                      </button>
+                      <button type="button" onClick={() => setQuickDeadline(0)} className="px-2 py-1 text-[11px] font-medium bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 cursor-pointer transition-colors">Hoje</button>
+                      <button type="button" onClick={() => setQuickDeadline(3)} className="px-2 py-1 text-[11px] font-medium bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 cursor-pointer transition-colors">+3 Dias</button>
+                      <button type="button" onClick={() => setQuickDeadline(7)} className="px-2 py-1 text-[11px] font-medium bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 cursor-pointer transition-colors">+7 Dias</button>
+                      <button type="button" onClick={() => setQuickDeadline(15)} className="px-2 py-1 text-[11px] font-medium bg-white text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] rounded border border-[#400404]/20 cursor-pointer transition-colors">+15 Dias</button>
                     </div>
 
-                    {/* Calendário com bloqueio de datas passadas */}
                     <Calendar
                       selected={selectedDeadline}
                       onSelect={(date) => {
@@ -589,16 +734,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
                     {selectedDeadline && (
                       <div className="p-2 border-t border-[#400404]/15 flex justify-end bg-white">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDeadline(undefined);
-                            setIsCalendarOpen(false);
-                          }}
-                          className="text-[11px] font-bold text-red-700 hover:text-red-900 p-1"
-                        >
-                          Limpar Data
-                        </button>
+                        <button type="button" onClick={() => { setSelectedDeadline(undefined); setIsCalendarOpen(false); }} className="text-[11px] font-medium text-red-700 hover:text-red-900 p-1">Limpar Data</button>
                       </div>
                     )}
                   </PopoverContent>
@@ -606,58 +742,66 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
               </div>
             </div>
 
-            {/* Campo: Briefing Detalhado */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#400404]">Briefing Detalhado & Instruções</label>
+              <label className="text-xs font-semibold text-[#400404]">Briefing Detalhado & Instruções</label>
               <textarea
                 rows={3}
-                placeholder="Insira aqui as marcações, observações do cliente e estilo de cortes desejado..."
+                placeholder="Insira aqui as marcações, observações do cliente e estilo de cortes..."
                 value={briefingText}
                 onChange={(e) => setBriefingText(e.target.value)}
-                className="w-full p-2.5 bg-white border border-[#400404]/25 rounded-lg text-xs font-medium text-[#400404] focus:outline-none focus:ring-2 focus:ring-[#400404]"
+                className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-normal text-[#400404] focus:outline-none focus:ring-2 focus:ring-[#400404]"
               />
             </div>
 
-            {/* Campo: Links dos Arquivos (Dinâmico com Múltiplas Caixas) */}
+            {/* Switch de Ingestão Automática (AutoIngest) */}
+            <div className="p-3.5 bg-white border border-[#400404]/15 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[#400404] flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-[#400404]" />
+                  <span>Ingestão Automática de Mídias</span>
+                </p>
+                <p className="text-[11px] text-[#5C1212]/80 font-normal mt-0.5">
+                  Dispara automaticamente o download e transcodificação ao salvar os links.
+                </p>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoIngest}
+                  onChange={(e) => setAutoIngest(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#400404]"></div>
+              </label>
+            </div>
+
             <div className="space-y-2 pt-2 border-t border-[#400404]/15">
-              <label className="text-xs font-bold text-[#400404] block">
+              <label className="text-xs font-semibold text-[#400404] block">
                 Link dos Arquivos (Google Drive, Mídias, Áudios, PDFs)
               </label>
 
               <div className="space-y-2.5">
                 {linkItems.map((item) => (
                   <div key={item.id} className="flex items-center gap-2">
-                    {/* Dropdown Seletor de Tipo */}
-                    <select
+                    <LinkTypeSelect
                       value={item.linkType}
-                      onChange={(e) =>
-                        handleLinkChange(item.id, 'linkType', e.target.value)
-                      }
-                      className="p-2 bg-white border border-[#400404]/25 rounded-lg text-xs font-bold text-[#400404] focus:outline-none focus:ring-2 focus:ring-[#400404] shrink-0"
-                    >
-                      <option value="Folder">📁 Pasta Drive</option>
-                      <option value="Video">🎬 Vídeo</option>
-                      <option value="Audio">🎵 Áudio</option>
-                      <option value="Image">🖼️ Imagem</option>
-                      <option value="PDF">📄 PDF</option>
-                      <option value="Other">🔗 Outro</option>
-                    </select>
+                      onChange={(val) => handleLinkChange(item.id, 'linkType', val)}
+                    />
 
-                    {/* Input da URL */}
                     <Input
                       type="url"
                       placeholder="Ex: https://drive.google.com/drive/folders/..."
                       value={item.url}
                       onChange={(e) => handleLinkChange(item.id, 'url', e.target.value)}
-                      className="bg-white text-xs font-mono font-medium text-[#400404] flex-1"
+                      className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 flex-1"
                     />
 
-                    {/* Botão Excluir Linha de Link */}
                     {linkItems.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveLinkField(item.id)}
-                        className="p-2 text-red-700 hover:text-red-900 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                        className="p-2 text-red-700/80 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                         title="Remover Link"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -667,32 +811,20 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 ))}
               </div>
 
-              {/* Botão "+ ADICIONAR LINK" com Estilização das Prints 2 & 3 */}
               <button
                 type="button"
-                onClick={handleAddLinkField}
-                className="w-full mt-3 py-2.5 px-4 rounded-xl border-2 border-[#400404] bg-[#FFFBED] text-[#400404] font-bold text-xs hover:bg-[#400404] hover:text-[#FFFBED] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.99]"
+                onClick={() => handleAddLinkField(false)}
+                className="group w-full mt-3 py-2 px-4 rounded-xl border border-[#400404]/25 bg-white text-[#400404] font-medium text-xs hover:bg-[#400404] hover:text-[#FFFBED] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99]"
               >
-                <Plus className="w-4 h-4" />
-                <span>+ ADICIONAR LINK</span>
+                <Plus className="w-4 h-4 text-[#400404] group-hover:text-[#FFFBED] transition-colors" />
+                <span>Adicionar Link</span>
               </button>
             </div>
 
             <DialogFooter className="pt-4 border-t border-[#400404]/15">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="text-xs font-bold"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={isCreating || !title.trim()}
-                className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-semibold text-xs cursor-pointer"
-              >
-                {isCreating ? (
+              <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)} className="text-xs font-medium">Cancelar</Button>
+              <Button type="submit" disabled={isSaving || !title.trim()} className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs cursor-pointer">
+                {isSaving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     <span>Criando...</span>
@@ -700,6 +832,143 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 ) : (
                   <span>Criar Projeto</span>
                 )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Editar Projeto */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="bg-[#FFFBED] border border-[#400404]/25 text-[#400404] max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-[#400404] tracking-tight">Editar Projeto</DialogTitle>
+            <DialogDescription className="text-xs text-[#5C1212]/80 font-normal">
+              Atualize as informações, links e parâmetros de ingestão do projeto.
+            </DialogDescription>
+          </DialogHeader>
+
+          {validationError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs font-medium text-red-950 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-700" />
+              <span>{validationError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleUpdateProject} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#400404]">Título do Projeto *</label>
+              <Input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                required
+                className="bg-white text-xs font-normal text-[#400404] border-[#400404]/20"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#400404]">Status do Projeto</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:ring-2 focus:ring-[#400404]/20 focus:outline-none"
+                >
+                  <option value="Draft">Rascunho</option>
+                  <option value="InProduction">Em Produção</option>
+                  <option value="InReview">Em Revisão</option>
+                  <option value="Completed">Concluído</option>
+                  <option value="Cancelled">Cancelado</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#400404]">ID do Pedido (CRM Ref)</label>
+                <Input
+                  type="text"
+                  value={editExternalOrderReference}
+                  onChange={(e) => setEditExternalOrderReference(e.target.value)}
+                  className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#400404]">Briefing Detalhado</label>
+              <textarea
+                rows={3}
+                value={editBriefingText}
+                onChange={(e) => setEditBriefingText(e.target.value)}
+                className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-normal text-[#400404]"
+              />
+            </div>
+
+            {/* Switch de Ingestão Automática (Edit) */}
+            <div className="p-3.5 bg-white border border-[#400404]/15 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[#400404] flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-[#400404]" />
+                  <span>Ingestão Automática de Mídias</span>
+                </p>
+                <p className="text-[11px] text-[#5C1212]/80 font-normal mt-0.5">
+                  Dispara a ingestão de links adicionados nesta atualização.
+                </p>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editAutoIngest}
+                  onChange={(e) => setEditAutoIngest(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#400404]"></div>
+              </label>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-[#400404]/15">
+              <label className="text-xs font-semibold text-[#400404] block">Gerenciar Links do Projeto</label>
+              <div className="space-y-2.5">
+                {editLinkItems.map((item) => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    <LinkTypeSelect
+                      value={item.linkType}
+                      onChange={(val) => handleLinkChange(item.id, 'linkType', val, true)}
+                    />
+
+                    <Input
+                      type="url"
+                      value={item.url}
+                      onChange={(e) => handleLinkChange(item.id, 'url', e.target.value, true)}
+                      className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 flex-1"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveLinkField(item.id, true)}
+                      className="p-2 text-red-700/80 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleAddLinkField(true)}
+                className="group w-full mt-3 py-2 px-4 rounded-xl border border-[#400404]/25 bg-white text-[#400404] font-medium text-xs hover:bg-[#400404] hover:text-[#FFFBED] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-[#400404] group-hover:text-[#FFFBED] transition-colors" />
+                <span>Adicionar Link</span>
+              </button>
+            </div>
+
+            <DialogFooter className="pt-4 border-t border-[#400404]/15">
+              <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)} className="text-xs font-medium">Cancelar</Button>
+              <Button type="submit" disabled={isSaving || !editTitle.trim()} className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs cursor-pointer">
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <span>Salvar Alterações</span>}
               </Button>
             </DialogFooter>
           </form>
