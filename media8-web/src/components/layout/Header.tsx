@@ -1,105 +1,48 @@
 import React from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
-
-import NotificationsDropdown from './NotificationsDropdown';
-import GlobalSearch from './GlobalSearch';
-import UserNav from './UserNav';
+import { LogOut, User as UserIcon, Shield } from 'lucide-react';
+import type { User } from '../../types';
+import { Button } from '../ui/button';
 
 interface HeaderProps {
-  sidebarCollapsed: boolean;
+  currentUser: User;
+  onLogout: () => void;
 }
 
-const routeTitles: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/orders': 'Pedidos',
-  '/orders/new': 'Novo Pedido',
-  '/users': 'Usuários',
-  '/admin/offers': 'Ofertas',
-  '/admin/video-formats': 'Formatos',
-  '/admin/editing-styles': 'Estilos',
-  '/admin/payments': 'Pagamentos',
-  '/edits': 'Edições',
-  '/settings': 'Configurações',
-  '/notifications': 'Notificações',
-};
-
-const getRouteTitle = (pathname: string): string => {
-  if (routeTitles[pathname]) return routeTitles[pathname];
-  if (pathname.startsWith('/orders/') && pathname !== '/orders/new') return 'Detalhes do Pedido';
-  return 'Media 8';
-};
-
-const Header: React.FC<HeaderProps> = ({ sidebarCollapsed }) => {
-  const location = useLocation();
-
-  const pageTitle = getRouteTitle(location.pathname);
-  
-  // Generate breadcrumbs from path
-  const pathParts = location.pathname.split('/').filter(Boolean);
-  const breadcrumbs = pathParts.map((part, index) => {
-    const path = '/' + pathParts.slice(0, index + 1).join('/');
-    return {
-      label: routeTitles[path] || part.charAt(0).toUpperCase() + part.slice(1),
-      path,
-    };
-  });
-
+export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
   return (
-    <motion.header
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border"
-    >
-      <div className="flex items-center justify-between h-16 px-4 md:px-6">
-        {/* Left side - Breadcrumbs & Title */}
-        <div>
-          {/* Breadcrumbs - Hidden on mobile */}
-          <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <Link to="/dashboard" className="hover:text-foreground transition-colors">
-              Home
-            </Link>
-            {breadcrumbs.map((crumb, index) => (
-              <React.Fragment key={crumb.path}>
-                <ChevronRight className="h-3 w-3" />
-                {index === breadcrumbs.length - 1 ? (
-                  <span className="text-foreground font-medium">
-                    {crumb.label}
-                  </span>
-                ) : (
-                  <Link 
-                    to={crumb.path} 
-                    className="hover:text-foreground transition-colors"
-                  >
-                    {crumb.label}
-                  </Link>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-          
-          {/* Page Title - Responsive typography */}
-          <h1 className="text-lg md:text-xl font-semibold text-foreground">{pageTitle}</h1>
-        </div>
-
-        {/* Right side - Search, Notifications & User Menu */}
-        <div className="flex items-center gap-3">
-          {/* Global Search */}
-          <div className="hidden md:block">
-            <GlobalSearch />
-          </div>
-
-          {/* Notifications */}
-          <NotificationsDropdown />
-
-          {/* User Navigation Dropdown */}
-          <UserNav />
-        </div>
+    <header className="sticky top-0 z-40 bg-[#FFFBED]/95 backdrop-blur-sm border-b border-[#400404]/15 px-6 py-3.5 flex items-center justify-between shadow-sm">
+      <div>
+        <p className="text-[11px] uppercase font-mono tracking-wider text-[#5C1212]/60">
+          Painel da Produtora
+        </p>
+        <h1 className="text-lg font-bold text-[#400404]">Media 8 | Workstation</h1>
       </div>
-    </motion.header>
+
+      <div className="flex items-center gap-4">
+        {/* User Profile Pill */}
+        <div className="flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-lg border border-[#400404]/15 shadow-sm">
+          <div className="w-8 h-8 rounded-full bg-[#400404] text-[#FFFBED] font-bold text-xs flex items-center justify-center">
+            {currentUser.Name ? currentUser.Name.charAt(0).toUpperCase() : 'U'}
+          </div>
+          <div className="text-left hidden sm:block">
+            <p className="text-xs font-bold text-[#400404] leading-tight">{currentUser.Name}</p>
+            <p className="text-[10px] text-[#5C1212]/70 font-mono">
+              {currentUser.Role === 'Admin' ? '👑 Admin' : '🎬 Editor'}
+            </p>
+          </div>
+        </div>
+
+        {/* Logout Button */}
+        <Button
+          onClick={onLogout}
+          variant="outline"
+          size="sm"
+          className="border-[#400404]/20 hover:bg-[#400404] hover:text-[#FFFBED] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Sair</span>
+        </Button>
+      </div>
+    </header>
   );
 };
-
-export default Header;

@@ -1,68 +1,55 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   FolderKanban,
+  Film,
+  Activity,
   Users,
   Settings,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
   HelpCircle,
-  Scissors,
-  Package,
-  ShoppingBag,
-  Film,
-  Palette,
-  CreditCard,
-  FileText,
 } from 'lucide-react';
 
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { BrandLogo } from '../BrandLogo';
+import type { User } from '../../types';
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  currentUser: User;
 }
 
 interface NavItem {
+  id: string;
   icon: React.ElementType;
   label: string;
-  path: string;
   roles?: string[];
-  external?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: FolderKanban, label: 'Pedidos', path: '/orders', roles: ['Admin', 'Client'] },
-  { icon: ShoppingBag, label: 'Serviços', path: '/services', roles: ['Admin', 'Client'] },
-  { icon: Palette, label: 'Ident. Marca', path: '/branding-profiles', roles: ['Admin', 'Client'] },
-  { icon: Film, label: 'Estilos Edição', path: '/editing-profiles', roles: ['Admin', 'Client'] },
-  { icon: Scissors, label: 'Edições', path: '/edits', roles: ['Admin', 'Editor'] },
-  { icon: Users, label: 'Usuários', path: '/users', roles: ['Admin'] },
-  { icon: Package, label: 'Ofertas', path: '/admin/offers', roles: ['Admin'] },
-  { icon: Film, label: 'Formatos', path: '/admin/video-formats', roles: ['Admin'] },
-  { icon: Palette, label: 'Estilos', path: '/admin/editing-styles', roles: ['Admin'] },
-  { icon: CreditCard, label: 'Pagamentos', path: '/admin/payments', roles: ['Admin'] },
-  { icon: FileText, label: 'Contratos', path: '/contracts', roles: ['Admin', 'Client'] },
-  { icon: Settings, label: 'Configurações', path: '/settings' },
-  { icon: ExternalLink, label: 'Contratar Mais', path: '/', external: true, roles: ['Client'] },
+  { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { id: 'projects', icon: FolderKanban, label: 'Projetos' },
+  { id: 'workstation', icon: Film, label: 'Workstation PAM' },
+  { id: 'jobs', icon: Activity, label: 'Esteira de Ingestão' },
+  { id: 'users', icon: Users, label: 'Usuários & Atribuições', roles: ['Admin'] },
+  { id: 'settings', icon: Settings, label: 'Configurações & Storage' },
 ];
 
-const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
-  const location = useLocation();
-  const { user } = useAuth();
-  
-  // FIX: Use user?.Role || (user as any)?.role for backwards compatibility
-  const userRole = user?.Role || (user as any)?.role || 'Client';
-  
+export const Sidebar: React.FC<SidebarProps> = ({
+  collapsed,
+  onToggle,
+  activeTab,
+  onTabChange,
+  currentUser,
+}) => {
+  const userRole = currentUser.Role || 'Editor';
+
   const filteredNavItems = navItems.filter(
-    (item) => !item.roles || (userRole && item.roles.includes(userRole))
+    (item) => !item.roles || item.roles.includes(userRole)
   );
 
   return (
@@ -70,11 +57,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       initial={false}
       animate={{ width: collapsed ? 80 : 280 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground z-50 flex flex-col shadow-xl"
+      className="fixed left-0 top-0 h-screen bg-[#400404] text-[#FFFBED] z-50 flex flex-col shadow-xl select-none"
     >
       {/* Header */}
-      <div className="p-4 flex items-center justify-between border-b border-sidebar-border">
-        <Link to="/dashboard" className="flex-1 transition-opacity hover:opacity-80">
+      <div className="p-4 flex items-center justify-between border-b border-[#5C1212]">
+        <div className="flex-1 cursor-pointer" onClick={() => onTabChange('dashboard')}>
           {!collapsed && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -83,101 +70,81 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
               className="flex items-center gap-3"
             >
               <div>
-                <BrandLogo variant="cream" size="sm" href="/dashboard" />
-                <p className="text-xs text-sidebar-foreground/60">Gestão de Edição de Vídeos</p>
+                <BrandLogo variant="cream" size="sm" />
+                <p className="text-xs text-[#FFFBED]/60 font-medium mt-0.5">Workstation PAM</p>
               </div>
             </motion.div>
           )}
           {collapsed && (
             <BrandLogo variant="cream" size="sm" />
           )}
-        </Link>
+        </div>
       </div>
 
       {/* Toggle Button */}
       <button
         onClick={onToggle}
-        className="absolute -right-3 top-20 w-6 h-6 bg-sidebar-primary text-sidebar-primary-foreground rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+        className="absolute -right-3 top-20 w-6 h-6 bg-[#FFFBED] text-[#400404] rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer"
       >
         {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
       </button>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
         {filteredNavItems.map((item) => {
-          const isActive = !item.external && location.pathname === item.path;
+          const isActive = activeTab === item.id;
           const Icon = item.icon;
 
-          if (item.external) {
-            return (
-              <Link key={item.path} to={item.path}>
-                <Button
-                  variant="sidebar"
-                  className={cn(
-                    'w-full text-sidebar-foreground/60 hover:text-sidebar-foreground',
-                    collapsed ? 'justify-center px-2' : 'justify-start px-4'
-                  )}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  {!collapsed && <span className="ml-3">{item.label}</span>}
-                </Button>
-              </Link>
-            );
-          }
-
           return (
-            <Link key={item.path} to={item.path}>
-              <Button
-                variant={isActive ? 'sidebar-active' : 'sidebar'}
-                className={cn(
-                  'w-full',
-                  collapsed ? 'justify-center px-2' : 'justify-start px-4'
-                )}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: 'auto' }}
-                    exit={{ opacity: 0, width: 0 }}
-                    className="ml-3"
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
-              </Button>
-            </Link>
+            <button
+              key={item.id}
+              onClick={() => onTabChange(item.id)}
+              className={`w-full flex items-center gap-3 py-3 rounded-lg text-sm transition-colors cursor-pointer ${
+                collapsed ? 'justify-center px-2' : 'justify-start px-3.5'
+              } ${
+                isActive
+                  ? 'bg-[#FFFBED] text-[#400404] font-semibold shadow-md'
+                  : 'text-[#FFFBED]/80 hover:bg-[#5C1212] hover:text-[#FFFBED]'
+              }`}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 'auto' }}
+                  exit={{ opacity: 0, width: 0 }}
+                  className="truncate"
+                >
+                  {item.label}
+                </motion.span>
+              )}
+            </button>
           );
         })}
       </nav>
 
-      {/* Footer - Support/Help */}
-      <div className="p-4 border-t border-sidebar-border">
-        <Link to="/">
-          <Button
-            variant="sidebar"
-            className={cn(
-              'w-full text-sidebar-foreground/60 hover:text-sidebar-foreground',
-              collapsed ? 'justify-center px-2' : 'justify-start px-4'
-            )}
-          >
-            <HelpCircle className="h-5 w-5 shrink-0" />
-            {!collapsed && <span className="ml-3">Ajuda & Suporte</span>}
-          </Button>
-        </Link>
-        
+      {/* Footer - Support */}
+      <div className="p-4 border-t border-[#5C1212]">
+        <button
+          onClick={() => onTabChange('settings')}
+          className={`w-full flex items-center gap-3 py-2 text-xs text-[#FFFBED]/60 hover:text-[#FFFBED] transition-colors cursor-pointer ${
+            collapsed ? 'justify-center px-2' : 'justify-start px-2'
+          }`}
+        >
+          <HelpCircle className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Ajuda & Suporte</span>}
+        </button>
+
         {!collapsed && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-xs text-sidebar-foreground/40 text-center mt-3"
+            className="text-[10px] text-[#FFFBED]/40 text-center mt-2 font-mono"
           >
-            v1.0.0
+            v1.0.0 (Workstation PAM)
           </motion.p>
         )}
       </div>
     </motion.aside>
   );
 };
-
-export default Sidebar;

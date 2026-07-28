@@ -1,76 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { Sidebar } from './Sidebar';
+import { Header } from './Header';
+import type { User } from '../../types';
 
-import { useAuth } from '@/contexts/AuthContext';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import MobileNav from './MobileNav';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { BrandLogo } from '../BrandLogo';
+interface MainLayoutProps {
+  currentUser: User;
+  onLogout: () => void;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  children: React.ReactNode;
+}
 
-const MainLayout: React.FC = () => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+export const MainLayout: React.FC<MainLayoutProps> = ({
+  currentUser,
+  onLogout,
+  activeTab,
+  onTabChange,
+  children,
+}) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const isMobile = useIsMobile();
 
-  // Show loading state while checking auth
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="space-y-4 text-center">
-          <BrandLogo variant="wine" size="lg" />
-          <Skeleton className="h-4 w-32 mx-auto" />
-        </div>
-      </div>
-    );
-  }
-
-  // Redirect to login if not authenticated
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Calculate margin for desktop
-  const desktopMarginLeft = isMobile ? 0 : (sidebarCollapsed ? 80 : 280);
+  const desktopMarginLeft = sidebarCollapsed ? 80 : 280;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile Navigation */}
-      <MobileNav open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
+    <div className="min-h-screen bg-[#FFFBED] text-[#400404]">
+      {/* Sidebar */}
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        currentUser={currentUser}
+      />
 
-      {/* Desktop Sidebar - Hidden on mobile */}
-      <div className="hidden md:block">
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
-      </div>
-
-      {/* Main Content Area */}
+      {/* Main Container */}
       <div
-        className="transition-all duration-300 ease-in-out pt-14 md:pt-0"
-        style={{ marginLeft: desktopMarginLeft }}
+        className="transition-all duration-300 ease-in-out flex flex-col min-h-screen"
+        style={{ marginLeft: `${desktopMarginLeft}px` }}
       >
-        {/* Desktop Header - Hidden on mobile */}
-        <div className="hidden md:block">
-          <Header sidebarCollapsed={sidebarCollapsed} />
-        </div>
+        {/* Header */}
+        <Header currentUser={currentUser} onLogout={onLogout} />
 
-        {/* Page Content - Responsive padding */}
-        <motion.main
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-          className="p-4 md:p-6 lg:p-8"
-        >
-          <Outlet />
-        </motion.main>
+        {/* Content Body */}
+        <main className="flex-1 p-6 lg:p-8">
+          {children}
+        </main>
       </div>
     </div>
   );
 };
-
-export default MainLayout;
