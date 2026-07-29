@@ -10,6 +10,7 @@ namespace Media8.Workstation.Api.Controllers;
 /// Requer obrigatoriamente autenticação prévia (JWT via Header Authorization ou Cookie HttpOnly "media8_auth").
 /// </summary>
 [Authorize]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class StorageController : WorkstationBaseController
 {
     private readonly string _storagePath;
