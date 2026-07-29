@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-import { AuthService } from '../../services/api';
+import { ProtectedImage } from '@/components/ui/ProtectedImage';
 
 interface UserNavProps {
   currentUser: User;
@@ -31,11 +31,8 @@ interface UserNavProps {
 
 export const UserNav: React.FC<UserNavProps> = ({ currentUser, onLogout, className }) => {
   const navigate = useNavigate();
-  const [imgFailed, setImgFailed] = React.useState(false);
 
   if (!currentUser) return null;
-
-  const avatarSrc = !imgFailed && currentUser.AvatarUrl ? AuthService.getProtectedMediaUrl(currentUser.AvatarUrl) : undefined;
 
   const initials = currentUser.Name
     ? currentUser.Name.split(' ')
@@ -54,16 +51,12 @@ export const UserNav: React.FC<UserNavProps> = ({ currentUser, onLogout, classNa
           aria-label="Menu do usuário"
         >
           <div className="w-9 h-9 rounded-full bg-[#400404] text-[#FFFBED] font-semibold text-sm flex items-center justify-center overflow-hidden ring-2 ring-[#400404]/20 hover:ring-[#400404]/40 transition-all shadow-xs shrink-0 cursor-pointer">
-            {avatarSrc ? (
-              <img
-                src={avatarSrc}
-                alt={currentUser.Name}
-                className="w-full h-full object-cover"
-                onError={() => setImgFailed(true)}
-              />
-            ) : (
-              <span>{initials}</span>
-            )}
+            <ProtectedImage
+              src={currentUser.AvatarUrl}
+              alt={currentUser.Name}
+              className="w-full h-full object-cover"
+              fallbackContent={<span>{initials}</span>}
+            />
           </div>
         </button>
       </DropdownMenuTrigger>
@@ -77,16 +70,12 @@ export const UserNav: React.FC<UserNavProps> = ({ currentUser, onLogout, classNa
         <DropdownMenuLabel className="font-normal p-3 bg-[#400404]/5 rounded-xl border border-[#400404]/10 mb-1">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#400404] text-[#FFFBED] font-semibold text-sm flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
-              {avatarSrc ? (
-                <img
-                  src={avatarSrc}
-                  alt={currentUser.Name}
-                  className="w-full h-full object-cover"
-                  onError={() => setImgFailed(true)}
-                />
-              ) : (
-                <span>{initials}</span>
-              )}
+              <ProtectedImage
+                src={currentUser.AvatarUrl}
+                alt={currentUser.Name}
+                className="w-full h-full object-cover"
+                fallbackContent={<span>{initials}</span>}
+              />
             </div>
 
             <div className="flex flex-col space-y-0.5 overflow-hidden">

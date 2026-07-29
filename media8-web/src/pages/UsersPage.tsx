@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserPlus, Crown, Video, Loader2, Search, Edit2, Upload, Camera, Pencil, Check } from 'lucide-react';
 import type { User, Project, UserStats } from '../types';
 import { UserService, AuthService } from '../services/api';
+import { ProtectedImage } from '../components/ui/ProtectedImage';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
@@ -391,11 +392,12 @@ export const UsersPage: React.FC<UsersPageProps> = ({
                       <div className="flex items-center gap-3">
                         {/* Avatar Image or Initials Box */}
                         <div className="w-9 h-9 rounded-xl bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center shadow-xs overflow-hidden shrink-0 border border-[#400404]/20">
-                          {u.AvatarUrl ? (
-                            <img src={AuthService.getProtectedMediaUrl(u.AvatarUrl)} alt={u.Name} className="w-full h-full object-cover" />
-                          ) : (
-                            u.Name ? u.Name.charAt(0).toUpperCase() : 'U'
-                          )}
+                          <ProtectedImage
+                            src={u.AvatarUrl}
+                            alt={u.Name}
+                            className="w-full h-full object-cover"
+                            fallbackContent={<span>{u.Name ? u.Name.charAt(0).toUpperCase() : 'U'}</span>}
+                          />
                         </div>
                         <span>{u.Name}</span>
                       </div>
