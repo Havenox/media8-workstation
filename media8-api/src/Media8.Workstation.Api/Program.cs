@@ -53,16 +53,9 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            if (string.IsNullOrEmpty(context.Token))
+            if (string.IsNullOrEmpty(context.Token) && context.Request.Cookies.ContainsKey("media8_auth"))
             {
-                if (context.Request.Cookies.ContainsKey("media8_auth"))
-                {
-                    context.Token = context.Request.Cookies["media8_auth"];
-                }
-                else if (context.Request.Query.TryGetValue("token", out var queryToken))
-                {
-                    context.Token = queryToken;
-                }
+                context.Token = context.Request.Cookies["media8_auth"];
             }
             return Task.CompletedTask;
         }

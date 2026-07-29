@@ -47,13 +47,7 @@ public class AuthController(WorkstationDbContext context, JwtTokenService tokenS
 
         var token = tokenService.GenerateToken(user);
 
-        Response?.Cookies?.Append("media8_auth", token, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = false, // Set to false in dev or true in production behind HTTPS
-            SameSite = SameSiteMode.Lax,
-            Expires = DateTimeOffset.UtcNow.AddDays(7)
-        });
+        SetAuthCookie(token);
 
         return Ok(new AuthResponse
         {
@@ -86,6 +80,16 @@ public class AuthController(WorkstationDbContext context, JwtTokenService tokenS
             return NotFound();
         }
 
+        var authHeader = Request.Headers["Authorization"].ToString();
+        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            var activeToken = authHeader.Substring("Bearer ".Length).Trim();
+            if (!string.IsNullOrEmpty(activeToken))
+            {
+                SetAuthCookie(activeToken);
+            }
+        }
+
         return Ok(new UserDto
         {
             UserId = user.UserId,
@@ -94,6 +98,21 @@ public class AuthController(WorkstationDbContext context, JwtTokenService tokenS
             Role = user.Role,
             AvatarUrl = user.AvatarUrl,
             CreatedAt = user.CreatedAt
+        });
+    }
+
+    private void SetAuthCookie(string token)
+    {
+        if (Response?.Cookies == null) return;
+
+        var isHttps = Request?.IsHttps == true || string.Equals(Request?.Headers["X-Forwarded-Proto"], "https", StringComparison.OrdinalIgnoreCase);
+        Response.Cookies.Append("media8_auth", token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = isHttps,
+            SameSite = SameSiteMode.Lax,
+            Path = "/",
+            Expires = DateTimeOffset.UtcNow.AddDays(7)
         });
     }
 

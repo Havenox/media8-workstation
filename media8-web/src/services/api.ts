@@ -100,12 +100,6 @@ export const AuthService = {
       relative = relative.substring(1);
     }
 
-    const token = localStorage.getItem('media8_token');
-    if (token) {
-      const connector = queryParams ? '&' : '?';
-      queryParams += `${connector}token=${encodeURIComponent(token)}`;
-    }
-
     return `/api/v1/Storage/${relative}${queryParams}`;
   },
 };
