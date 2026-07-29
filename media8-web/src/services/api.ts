@@ -13,9 +13,12 @@ import type {
   ProjectStats,
   UserStats,
   UpdateUserRequest,
+  GoogleDriveSettings,
+  SaveGoogleDriveSettingsRequest,
+  TestGoogleDriveConnectionResponse,
 } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '';
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
@@ -96,11 +99,13 @@ export const AuthService = {
       relative = relative.replace('/storage/', '');
     } else if (relative.startsWith('/api/v1/Storage/')) {
       relative = relative.replace('/api/v1/Storage/', '');
+    } else if (relative.startsWith('/Storage/')) {
+      relative = relative.replace('/Storage/', '');
     } else if (relative.startsWith('/')) {
       relative = relative.substring(1);
     }
 
-    return `/api/v1/Storage/${relative}${queryParams}`;
+    return `/Storage/${relative}${queryParams}`;
   },
 };
 
@@ -240,5 +245,22 @@ export const JobService = {
     } catch {
       return [];
     }
+  },
+};
+
+export const SystemSettingsService = {
+  getGoogleDriveSettings: async (): Promise<GoogleDriveSettings> => {
+    const response = await api.get<GoogleDriveSettings>('/SystemSettings/GoogleDrive');
+    return response.data;
+  },
+
+  saveGoogleDriveSettings: async (data: SaveGoogleDriveSettingsRequest): Promise<GoogleDriveSettings> => {
+    const response = await api.post<GoogleDriveSettings>('/SystemSettings/GoogleDrive', data);
+    return response.data;
+  },
+
+  testGoogleDriveConnection: async (data?: SaveGoogleDriveSettingsRequest): Promise<TestGoogleDriveConnectionResponse> => {
+    const response = await api.post<TestGoogleDriveConnectionResponse>('/SystemSettings/GoogleDrive/Test', data || {});
+    return response.data;
   },
 };

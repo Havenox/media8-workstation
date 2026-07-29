@@ -155,3 +155,18 @@ export interface PagedResult<T> {
   TotalPages: number;
   HasNextPage: boolean;
 }
+
+export interface GoogleDriveSettings {
+  ApiKey: string;
+  IsConfigured: boolean;
+  UpdatedAt?: string;
+}
+
+export interface SaveGoogleDriveSettingsRequest {
+  ApiKey: string;
+}
+
+export interface TestGoogleDriveConnectionResponse {
+  Success: boolean;
+  Message: string;
+}
