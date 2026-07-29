@@ -84,7 +84,7 @@ public class Worker : BackgroundService
                             {
                                 linksToProcess.Add(new ProjectLink
                                 {
-                                    LinkId = Guid.NewGuid(),
+                                    ProjectLinkId = Guid.NewGuid(),
                                     ProjectId = asset.ProjectId,
                                     Url = asset.ExternalSourceUrl,
                                     LinkType = "GoogleDrive"
@@ -93,9 +93,8 @@ public class Worker : BackgroundService
                         }
                     }
 
-                    if (projectId == Guid.Empty && job.JobType == "IngestDownload")
+                    if (projectId == Guid.Empty)
                     {
-                        // Busca o projeto através das mídias ou links pendentes
                         var projectLink = await dbContext.ProjectLinks
                             .AsNoTracking()
                             .OrderByDescending(l => l.CreatedAt)
@@ -146,10 +145,12 @@ public class Worker : BackgroundService
                                 {
                                     AssetId = newAssetId,
                                     ProjectId = projectId,
-                                    SourceLinkId = link.LinkId,
                                     Title = discoveredFile.FileName,
                                     OriginalFileName = discoveredFile.FileName,
-                                    StoragePathRaw = downloadedFilePath,
+                                    ExternalSourceUrl = link.Url,
+                                    StoragePathHighFidelity = downloadedFilePath,
+                                    FileSizeBytes = discoveredFile.FileSizeBytes,
+                                    MimeType = string.IsNullOrWhiteSpace(discoveredFile.MimeType) ? "video/mp4" : discoveredFile.MimeType,
                                     Status = "Ingested",
                                     CreatedAt = DateTime.UtcNow
                                 };
