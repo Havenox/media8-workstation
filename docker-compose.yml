@@ -30,6 +30,13 @@ services:
     restart: unless-stopped
     environment:
       - ConnectionStrings__PostgreSQL=${DB_CONNECTION_STRING}
+      - DB_CONNECTION_STRING=${DB_CONNECTION_STRING}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - STORAGE_PATH=/storage
       - WORKER_ID=ingestion-worker-1
     volumes:
       - ./media8-storage:/storage
@@ -44,6 +51,13 @@ services:
     restart: unless-stopped
     environment:
       - ConnectionStrings__PostgreSQL=${DB_CONNECTION_STRING}
+      - DB_CONNECTION_STRING=${DB_CONNECTION_STRING}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - STORAGE_PATH=/storage
       - WORKER_ID=transcoder-worker-1
     volumes:
       - ./media8-storage:/storage
