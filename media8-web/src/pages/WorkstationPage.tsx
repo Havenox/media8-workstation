@@ -209,38 +209,45 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
 
           {/* Right Column: Asset List for Active Project */}
           <div className="bg-white p-4 rounded-xl border border-[#400404]/15 shadow-xs space-y-4 h-fit">
-            <h3 className="text-xs font-semibold text-[#400404] uppercase font-mono tracking-wider border-b border-[#400404]/10 pb-2">
-              Mídias Ingeridas ({activeProject.Assets?.length || 0})
-            </h3>
+            {(() => {
+              const ingestedAssets = activeProject.Assets?.filter(a => a.Status && a.Status.toLowerCase() !== 'pending') || [];
+              return (
+                <>
+                  <h3 className="text-xs font-semibold text-[#400404] uppercase font-mono tracking-wider border-b border-[#400404]/10 pb-2">
+                    Mídias Ingeridas ({ingestedAssets.length})
+                  </h3>
 
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
-              {!activeProject.Assets || activeProject.Assets.length === 0 ? (
-                <p className="text-xs text-[#5C1212]/80 italic py-4 text-center font-normal">Nenhum asset processado ainda.</p>
-              ) : (
-                activeProject.Assets.map((asset) => {
-                  const isSelected = selectedAsset?.AssetId === asset.AssetId;
-                  return (
-                    <button
-                      key={asset.AssetId}
-                      onClick={() => setSelectedAsset(asset)}
-                      className={`w-full text-left p-3 rounded-xl border text-xs transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#400404] text-[#FFFBED] border-[#400404] font-semibold shadow-xs'
-                          : 'bg-[#FFFBED]/60 border-[#400404]/15 text-[#400404] hover:border-[#400404]/40 font-medium'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold truncate">{asset.Title}</span>
-                        <span className="text-[10px] opacity-80 uppercase font-mono">{asset.Status}</span>
-                      </div>
-                      <p className="text-[11px] opacity-80 mt-1 line-clamp-1 font-normal">
-                        {asset.OriginalFileName}
-                      </p>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+                  <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                    {ingestedAssets.length === 0 ? (
+                      <p className="text-xs text-[#5C1212]/80 italic py-4 text-center font-normal">Nenhum asset processado ainda.</p>
+                    ) : (
+                      ingestedAssets.map((asset) => {
+                        const isSelected = selectedAsset?.AssetId === asset.AssetId;
+                        return (
+                          <button
+                            key={asset.AssetId}
+                            onClick={() => setSelectedAsset(asset)}
+                            className={`w-full text-left p-3 rounded-xl border text-xs transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#400404] text-[#FFFBED] border-[#400404] font-semibold shadow-xs'
+                                : 'bg-[#FFFBED]/60 border-[#400404]/15 text-[#400404] hover:border-[#400404]/40 font-medium'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold truncate">{asset.Title}</span>
+                              <span className="text-[10px] opacity-80 uppercase font-mono">{asset.Status}</span>
+                            </div>
+                            <p className="text-[11px] opacity-80 mt-1 line-clamp-1 font-normal">
+                              {asset.OriginalFileName}
+                            </p>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

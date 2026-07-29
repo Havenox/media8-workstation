@@ -729,7 +729,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 text-xs text-[#400404]/80 font-medium font-mono">
                       <Film className="w-3.5 h-3.5 text-[#400404]/60" />
-                      <span>{proj.Assets?.length || 0} mídias</span>
+                      <span>{proj.Assets?.filter(a => a.Status && a.Status.toLowerCase() !== 'pending')?.length || 0} mídias</span>
                     </div>
 
                     {/* Team Avatar Stack */}
