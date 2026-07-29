@@ -20,13 +20,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h2 className="text-2xl font-semibold text-[#400404] tracking-tight">Configurações</h2>
-        <p className="text-xs text-[#5C1212]/80 font-normal mt-0.5">
-          Gerenciamento de armazenamento em disco, regras de purga defensiva de arquivos RAW e dados de perfil.
-        </p>
-      </div>
+    <div className="space-y-4 max-w-4xl">
 
       {savedSuccess && (
         <div className="p-4 bg-emerald-100 border border-emerald-300 rounded-xl text-xs text-emerald-950 font-bold flex items-center gap-2">

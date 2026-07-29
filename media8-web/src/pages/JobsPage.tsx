@@ -79,22 +79,15 @@ export const JobsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-[#400404]">Esteira de Ingestão & Jobs</h2>
-          <p className="text-xs text-[#5C1212] font-semibold mt-0.5">
-            Monitoramento em tempo real da fila assíncrona de processamento de vídeos (SKIP LOCKED).
-          </p>
-        </div>
-
+    <div className="space-y-4">
+      {/* Top Action Row */}
+      <div className="flex justify-end">
         <Button
           onClick={fetchJobs}
           disabled={isLoading}
-          className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] text-xs font-semibold py-2 px-4 rounded-lg shadow-md flex items-center gap-2 cursor-pointer"
+          className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] text-xs font-semibold py-2 px-3.5 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all"
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           <span>Atualizar Fila</span>
         </Button>
       </div>

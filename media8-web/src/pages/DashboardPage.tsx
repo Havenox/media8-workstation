@@ -52,27 +52,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold text-[#400404] tracking-tight">
-            Olá, {currentUser.Name}!
-          </h2>
-          <p className="text-xs text-[#5C1212]/80 font-normal mt-0.5">
-            Visão geral da plataforma Media 8 Workstation PAM.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => onNavigateTab('projects')}
-            className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-2.5 px-4 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Novo Projeto</span>
-          </Button>
-        </div>
+    <div className="space-y-4">
+      {/* Top Actions Row */}
+      <div className="flex justify-end items-center gap-3">
+        <Button
+          onClick={() => onNavigateTab('projects')}
+          className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-2 px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Novo Projeto</span>
+        </Button>
       </div>
 
       {/* 4 Stat Summary Cards (Dados Consolidados do Endpoint GET /api/v1/Projects/Stats) */}

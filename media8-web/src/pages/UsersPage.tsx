@@ -288,39 +288,31 @@ export const UsersPage: React.FC<UsersPageProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold text-[#400404] tracking-tight">Usuários</h2>
-          <p className="text-xs text-[#5C1212]/80 font-normal mt-0.5">
-            Gestão de contas e funções de acesso da estação Media 8.
-          </p>
-        </div>
+    <div className="space-y-4">
+      {/* Search Bar, Action & Role Filters */}
+      <div className="bg-white p-3.5 rounded-xl border border-[#400404]/15 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Search Bar & Create User */}
+        <div className="flex items-center gap-3 w-full md:w-auto flex-1">
+          <div className="relative w-full md:w-80">
+            <Search className="w-4 h-4 text-[#400404]/60 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              type="text"
+              placeholder="Buscar por nome ou e-mail..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 bg-[#FFFBED]/50 border-[#400404]/20 rounded-xl text-xs font-normal text-[#400404]"
+            />
+          </div>
 
-        {currentUser.Role === 'Admin' && (
-          <Button
-            onClick={handleOpenCreateModal}
-            className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] text-xs font-medium py-2.5 px-4 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all shrink-0"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Novo Usuário</span>
-          </Button>
-        )}
-      </div>
-
-      {/* Search Bar & Role Filters */}
-      <div className="bg-white p-4 rounded-xl border border-[#400404]/15 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Search Bar */}
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-[#400404]/60 absolute left-3 top-1/2 -translate-y-1/2" />
-          <Input
-            type="text"
-            placeholder="Buscar por nome ou e-mail..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-[#FFFBED]/50 border-[#400404]/20 rounded-xl text-xs font-normal text-[#400404]"
-          />
+          {currentUser.Role === 'Admin' && (
+            <Button
+              onClick={handleOpenCreateModal}
+              className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] text-xs font-medium py-2 px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Novo Usuário</span>
+            </Button>
+          )}
         </div>
 
         {/* Filter Pills */}

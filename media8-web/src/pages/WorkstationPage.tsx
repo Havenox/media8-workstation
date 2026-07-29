@@ -95,21 +95,11 @@ export const WorkstationPage: React.FC<WorkstationPageProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Top Controls Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-[#400404]/15 shadow-xs">
-        <div className="flex items-center gap-3">
-          <Film className="w-6 h-6 text-[#400404]" />
-          <div>
-            <h2 className="text-lg font-semibold text-[#400404] tracking-tight">Estação PAM de Edição</h2>
-            <p className="text-xs text-[#5C1212]/80 font-normal">
-              Reprodutor de timecode de alta fidelidade e esteira de subclips.
-            </p>
-          </div>
-        </div>
-
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-3 rounded-xl border border-[#400404]/15 shadow-xs">
         {/* Project Selector & Actions */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between w-full gap-3">
           <div className="flex items-center gap-2">
             <label className="text-xs font-semibold text-[#400404]">Projeto Ativo:</label>
             <select

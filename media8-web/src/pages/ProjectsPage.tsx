@@ -577,27 +577,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold text-[#400404] tracking-tight">Projetos de Edição</h2>
-          <p className="text-xs text-[#5C1212]/80 font-normal mt-0.5">
-            Gerencie os projetos locais da estação e atribuições de editores. Total: {totalCount} projetos.
-          </p>
-        </div>
-
-        {currentUser.Role === 'Admin' && (
-          <Button
-            onClick={handleOpenCreateModal}
-            className="group bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-2.5 px-4 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all"
-          >
-            <Plus className="w-4 h-4 transition-colors" />
-            <span>Novo Projeto</span>
-          </Button>
-        )}
-      </div>
-
+    <div className="space-y-4">
       {feedbackMessage && (
         <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-medium text-emerald-900 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2">
@@ -611,15 +591,27 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
       {/* Search & Status Filters */}
       <div className="bg-white p-3.5 rounded-xl border border-[#400404]/15 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-[#400404]/50 absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input
-              type="text"
-              placeholder="Buscar projetos, briefings ou #CRM Ref..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-[#FFFBED]/50 text-xs font-normal text-[#400404] border-[#400404]/15 rounded-lg focus:border-[#400404]"
-            />
+          <div className="flex items-center gap-3 w-full md:w-auto flex-1">
+            <div className="relative w-full md:w-80">
+              <Search className="w-4 h-4 text-[#400404]/50 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                type="text"
+                placeholder="Buscar projetos, briefings ou #CRM Ref..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-[#FFFBED]/50 text-xs font-normal text-[#400404] border-[#400404]/15 rounded-lg focus:border-[#400404]"
+              />
+            </div>
+
+            {currentUser.Role === 'Admin' && (
+              <Button
+                onClick={handleOpenCreateModal}
+                className="group bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-2 px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+              >
+                <Plus className="w-4 h-4 transition-colors" />
+                <span>Novo Projeto</span>
+              </Button>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
