@@ -61,7 +61,7 @@ export const UserNav: React.FC<UserNavProps> = ({ currentUser, onLogout, classNa
           className={`flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-[#400404]/30 cursor-pointer ${className || ''}`}
           aria-label="Menu do usuário"
         >
-          <div className="w-9 h-9 rounded-full bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center overflow-hidden border-2 border-[#400404]/30 hover:border-[#400404] shadow-xs transition-all">
+          <div className="w-9 h-9 rounded-full bg-[#400404] text-[#FFFBED] font-semibold text-sm flex items-center justify-center overflow-hidden ring-2 ring-[#400404]/20 hover:ring-[#400404]/40 transition-all shadow-xs shrink-0 cursor-pointer">
             {avatarSrc ? (
               <img
                 src={avatarSrc}
