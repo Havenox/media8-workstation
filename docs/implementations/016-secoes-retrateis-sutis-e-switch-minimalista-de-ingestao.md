@@ -19,11 +19,12 @@ Para otimizar o fluxo de trabalho dos usuários e evitar formulários gigantes e
 
 ## 🧠 Estratégia da Solução
 
-1. **Painéis Retráteis Sutis (Sanfona Minimalista)**:
+1. **Painéis Retráteis Sutis (Sanfona Minimalista & Auto-Colapso no Blur)**:
+   - **Estado Inicial Colapsado por Padrão**: As seções retráteis iniciam fechadas (`false`) ao abrir os modais de cadastro ou edição, mantendo o formulário ultra-compacto.
+   - **Auto-Colapso ao Perder o Foco (Click Outside / Blur)**: Utilizados `useRef` para cada contêiner de seção e um listener global `mousedown` no `useEffect` para colapsar automaticamente qualquer painel expandido quando o usuário clica fora dele.
    - **Rótulos Diretos & Curtos**:
      - **Equipe**: Cabeçalho sutil `<Users className="w-4 h-4 text-[#400404]" />` + **"Equipe"** + Badge com contagem de integrantes + `<ChevronDown />` / `<ChevronUp />`.
      - **Links dos Materiais**: Cabeçalho sutil `<Link2 className="w-4 h-4 text-[#400404]" />` + **"Links dos Materiais"** + Badge com contagem de links + `<ChevronDown />` / `<ChevronUp />`.
-   - **Comportamento Interativo**: Alternância de estado booleano via clique no cabeçalho sutil, permitindo ocultar ou expandir cada seção dinamicamente.
 
 2. **Ingestão Automática Minimalista (1 Linha)**:
    - **Posicionamento**: Relocada para a base da seção de links (abaixo dos links e do botão de adicionar link).
