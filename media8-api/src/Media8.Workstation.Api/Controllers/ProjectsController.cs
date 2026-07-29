@@ -126,6 +126,8 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         var query = _context.Projects
             .Include(p => p.Links)
             .Include(p => p.Assets)
+            .Include(p => p.AssignedEditors)
+                .ThenInclude(e => e.User)
             .Where(p => !p.IsDeleted)
             .AsNoTracking();
 
