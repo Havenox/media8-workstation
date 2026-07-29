@@ -72,10 +72,21 @@ export const AuthService = {
     if (path.startsWith('data:')) return path;
 
     let relative = path;
+    let queryParams = '';
+
+    if (relative.includes('?')) {
+      const parts = relative.split('?');
+      relative = parts[0];
+      queryParams = `?${parts[1]}`;
+    }
+
     if (relative.startsWith('http://') || relative.startsWith('https://')) {
       try {
         const parsed = new URL(relative);
         relative = parsed.pathname;
+        if (parsed.search) {
+          queryParams = parsed.search;
+        }
       } catch {
         // keep as is
       }
@@ -89,7 +100,13 @@ export const AuthService = {
       relative = relative.substring(1);
     }
 
-    return `/api/v1/Storage/${relative}`;
+    const token = localStorage.getItem('media8_token');
+    if (token) {
+      const connector = queryParams ? '&' : '?';
+      queryParams += `${connector}token=${encodeURIComponent(token)}`;
+    }
+
+    return `/api/v1/Storage/${relative}${queryParams}`;
   },
 };
 

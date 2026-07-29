@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserPlus, Crown, Video, Loader2, Search, Edit2, Upload, Camera, Pencil, Check } from 'lucide-react';
 import type { User, Project, UserStats } from '../types';
-import { UserService } from '../services/api';
+import { UserService, AuthService } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
