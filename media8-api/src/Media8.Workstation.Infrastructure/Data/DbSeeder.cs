@@ -84,6 +84,18 @@ public static class DbSeeder
                 END $$;
             ");
 
+            // 6. Ensure SystemSettings table exists for API Keys and Global Configurations
+            await dbContext.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS ""SystemSettings"" (
+                    ""SettingId"" uuid PRIMARY KEY,
+                    ""Key"" character varying(150) NOT NULL UNIQUE,
+                    ""Value"" text NOT NULL,
+                    ""Description"" text NULL,
+                    ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT NOW(),
+                    ""UpdatedByUserId"" uuid NULL
+                );
+            ");
+
             Console.WriteLine("[DbSeeder] Database Schema successfully verified and updated.");
         }
         catch (Exception ex)

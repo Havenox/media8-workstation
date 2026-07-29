@@ -16,6 +16,7 @@ public class WorkstationDbContext : DbContext
     public DbSet<WorkstationAsset> WorkstationAssets => Set<WorkstationAsset>();
     public DbSet<TimecodeMarker> TimecodeMarkers => Set<TimecodeMarker>();
     public DbSet<MediaProcessingJob> MediaProcessingJobs => Set<MediaProcessingJob>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,6 +30,13 @@ public class WorkstationDbContext : DbContext
         modelBuilder.Entity<WorkstationAsset>().ToTable("WorkstationAssets");
         modelBuilder.Entity<TimecodeMarker>().ToTable("TimecodeMarkers");
         modelBuilder.Entity<MediaProcessingJob>().ToTable("MediaProcessingJobs");
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.ToTable("SystemSettings");
+            entity.HasKey(e => e.SettingId);
+            entity.HasIndex(e => e.Key).IsUnique();
+            entity.Property(e => e.Key).HasMaxLength(150).IsRequired();
+        });
 
         // User Configuration
         modelBuilder.Entity<User>(entity =>
