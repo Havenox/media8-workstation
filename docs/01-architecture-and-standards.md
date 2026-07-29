@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 2.9.0  
+> *Versão:* 3.0.0  
 > *Status:* Ativo  
 
 ---
@@ -37,11 +37,12 @@ O Dashboard e os contadores de metadados da aplicação consomem dados numérico
 
 ---
 
-## 4. Pipeline de Atribuições de Projetos, Lead Editor & Funções PAM
+## 4. Pipeline de Atribuições de Projetos, Lead Editor, Funções PAM & Avatar Stack
 
 1. **Contagem Real de Atribuições**: A coluna **Projetos Atribuídos** na tabela de usuários exibe a quantidade exata de projetos em que o usuário está ativamente atribuído (tanto para Admins quanto para Editores). O privilégio de Admin concede acesso global, mas não infla a contagem de atribuição.
-2. **Editor Responsável (Lead Editor)**: Todo projeto possui **1 Editor Responsável** (`LeadUserId`) obrigatório.
-3. **Funções da Atribuição (PAM Roles)**: Editores vinculados a um projeto possuem funções específicas (`General`, `Decoupage`, `AudioTreatment`, `ColorGrading`, `MotionGraphics`, `Reviewer`).
+2. **Editor Responsável (Lead Editor)**: Todo projeto possui **1 Editor Responsável** (`LeadUserId`) obrigatório, selecionado via dropdown refinado nos modais de cadastro e edição.
+3. **Funções da Atribuição (PAM Roles)**: Editores vinculados a um projeto possuem funções específicas (`General`, `Decoupage`, `AudioTreatment`, `ColorGrading`, `MotionGraphics`, `Reviewer`), com ícones vetoriais `Lucide React` dedicados.
+4. **Avatar Stack com Popover**: Os Cards de projetos exibem a pilha de avatares com destaque dourado para o Lead Editor e Popover interativo detalhando toda a equipe de atribuição.
 
 ---
 
