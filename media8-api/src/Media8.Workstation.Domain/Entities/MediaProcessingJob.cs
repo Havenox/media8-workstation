@@ -5,7 +5,7 @@ namespace Media8.Workstation.Domain.Entities;
 public class MediaProcessingJob
 {
     public Guid JobId { get; set; } = Guid.NewGuid();
-    public Guid AssetId { get; set; }
+    public Guid? AssetId { get; set; }
     public string JobType { get; set; } = string.Empty; // "IngestDownload", "GenerateHighFidelity", "GenerateProxy", "ExtractWaveform", "CutSubClip"
     public string Status { get; set; } = "Pending"; // "Pending", "Processing", "Completed", "Failed"
     public int Priority { get; set; } = 10;
@@ -18,5 +18,5 @@ public class MediaProcessingJob
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     [JsonIgnore]
-    public WorkstationAsset Asset { get; set; } = null!;
+    public WorkstationAsset? Asset { get; set; }
 }

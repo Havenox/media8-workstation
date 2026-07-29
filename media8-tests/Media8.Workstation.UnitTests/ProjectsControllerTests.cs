@@ -127,12 +127,10 @@ public class ProjectsControllerTests
         var actionResult = Assert.IsType<OkObjectResult>(result);
         Assert.NotNull(actionResult.Value);
 
-        var assets = await context.WorkstationAssets.Where(a => a.ProjectId == project.ProjectId).ToListAsync();
-        Assert.Single(assets);
-
-        var jobs = await context.MediaProcessingJobs.Where(j => j.AssetId == assets[0].AssetId).ToListAsync();
+        var jobs = await context.MediaProcessingJobs.ToListAsync();
         Assert.Single(jobs);
         Assert.Equal("IngestDownload", jobs[0].JobType);
+        Assert.Equal("Pending", jobs[0].Status);
     }
 
     [Fact]

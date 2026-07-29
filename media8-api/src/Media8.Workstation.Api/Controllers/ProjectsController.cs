@@ -420,7 +420,7 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
     }
 
     /// <summary>
-    /// Método interno atômico que varre os links e gera tarefas de ingestão evitando duplicidades.
+    /// Método interno atômico que varre os links e gera tarefas de ingestão para o Worker.Ingestion.
     /// </summary>
     private async Task<object> TriggerIngestInternalAsync(Guid projectId)
     {
@@ -428,71 +428,31 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
             .Where(l => l.ProjectId == projectId)
             .ToListAsync();
 
-        var existingAssetUrls = await _context.WorkstationAssets
-            .Where(a => a.ProjectId == projectId)
-            .Select(a => a.ExternalSourceUrl)
-            .ToListAsync();
-
-        var existingAssetUrlSet = new HashSet<string>(existingAssetUrls);
-
-        int enqueuedCount = 0;
-        int skippedCount = 0;
-
-        foreach (var link in links)
+        if (links.Count == 0)
         {
-            if (existingAssetUrlSet.Contains(link.Url))
-            {
-                skippedCount++;
-                continue; // Evita ingestão duplicada
-            }
-
-            // Extrai um nome legível para a mídia a partir da URL
-            var urlFileName = Path.GetFileName(new Uri(link.Url).AbsolutePath);
-            if (string.IsNullOrWhiteSpace(urlFileName) || urlFileName == "/")
-            {
-                urlFileName = $"Media_{link.LinkType}_{Guid.NewGuid().ToString()[..6]}";
-            }
-
-            var asset = new WorkstationAsset
-            {
-                AssetId = Guid.NewGuid(),
-                ProjectId = projectId,
-                Title = $"{link.LinkType} - {urlFileName}",
-                OriginalFileName = urlFileName,
-                ExternalSourceUrl = link.Url,
-                Status = "Pending",
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.WorkstationAssets.Add(asset);
-
-            var job = new MediaProcessingJob
-            {
-                JobId = Guid.NewGuid(),
-                AssetId = asset.AssetId,
-                JobType = "IngestDownload",
-                Status = "Pending",
-                Priority = 10,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _context.MediaProcessingJobs.Add(job);
-            enqueuedCount++;
-            existingAssetUrlSet.Add(link.Url);
+            return new { EnqueuedCount = 0, SkippedCount = 0, Message = "Nenhum link anexado ao projeto." };
         }
 
-        if (enqueuedCount > 0)
+        // Enfileira Job de IngestDownload para o Worker.Ingestion
+        var job = new MediaProcessingJob
         {
-            await _context.SaveChangesAsync();
-        }
+            JobId = Guid.NewGuid(),
+            AssetId = null,
+            JobType = "IngestDownload",
+            Status = "Pending",
+            Priority = 10,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.MediaProcessingJobs.Add(job);
+        await _context.SaveChangesAsync();
 
         return new
         {
-            ProjectId = projectId,
-            EnqueuedCount = enqueuedCount,
-            SkippedCount = skippedCount,
-            TotalLinks = links.Count
+            EnqueuedCount = links.Count,
+            SkippedCount = 0,
+            Message = $"Ingestão enfileirada com sucesso para varredura de {links.Count} links."
         };
     }
 
