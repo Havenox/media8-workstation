@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 3.2.0  
+> *Versão:* 3.3.0  
 > *Status:* Ativo  
 
 ---
@@ -111,3 +111,10 @@ public abstract class WorkstationBaseController : ControllerBase
 - **[Estudo de Caso 009](implementations/009-componente-linktypeselect-icones-lucide-hover.md):** Componente Customizado LinkTypeSelect e Correção de Contraste no Hover.
 - **[Estudo de Caso 010](implementations/010-endpoint-estatisticas-projetos-dashboard.md):** Endpoint Dedicado de Estatísticas (GET /api/v1/Projects/Stats) e Correção dos Indicadores do Dashboard.
 - **[Estudo de Caso 011](implementations/011-roteamento-declarativo-applayout-nginx.md):** Roteamento Declarativo por URL (react-router-dom v6), Layout Shell Persistente e Fallback Nginx.
+- **[Estudo de Caso 012](implementations/012-refatoracao-usuarios-paginacao-filtros-edicao-stats.md):** Refatoração Completa da Gestão de Usuários, Paginação 10 em 10 com Infinite Scroll, Filtros por Perfil e Endpoint GET /Users/Stats.
+- **[Estudo de Caso 013](implementations/013-calibracao-usuarios-crop-avatar-webp-confirmacao-senha.md):** Calibração de Usuários, Modal de Recorte de Avatar (Crop), Conversão WebP e Confirmação de Senha de Admin.
+- **[Estudo de Caso 014](implementations/014-coluna-projetos-atribuidos-funcoes-pam-lead-editor.md):** Coluna Projetos Atribuídos, Atribuição de Funções PAM e Lead Editor no Modal de Projetos.
+- **[Estudo de Caso 015](implementations/015-gestao-de-atribuicoes-de-editores-lead-editor-e-funcoes-pam.md):** Gestão de Atribuições de Editores, Lead Editor e Funções PAM de Edição.
+- **[Estudo de Caso 016](implementations/016-secoes-retrateis-sutis-e-switch-minimalista-de-ingestao.md):** Seções Retráteis Sutis (Equipe & Links), Fechamento no Blur e Switch Minimalista de Ingestão.
+- **[Estudo de Caso 017](implementations/017-cabecalho-superior-fixo-dinamico-e-menu-de-usuario.md):** Cabeçalho Superior Fixo Dinâmico (Breadcrumb & Título), Busca Global CommandK (⌘K), Notificações e UserNav.
+- **[Estudo de Caso 018](implementations/018-propagacao-avatarurl-backend-e-alinhamento-cabecalho-crm.md):** Propagação de AvatarUrl no Backend .NET 10 (AuthResponse & /Auth/me) e Alinhamento 1:1 do Cabeçalho e Menu Dropdown de Usuário com o App CRM.
