@@ -95,13 +95,51 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isFetchingMore, setIsFetchingMore] = useState<boolean>(false);
 
-  // Collapsible Accordion States (Create Modal)
-  const [isTeamExpanded, setIsTeamExpanded] = useState<boolean>(true);
-  const [isLinksExpanded, setIsLinksExpanded] = useState<boolean>(true);
+  // Collapsible Accordion States (Create Modal - Collapsed by default)
+  const [isTeamExpanded, setIsTeamExpanded] = useState<boolean>(false);
+  const [isLinksExpanded, setIsLinksExpanded] = useState<boolean>(false);
 
-  // Collapsible Accordion States (Edit Modal)
-  const [editIsTeamExpanded, setEditIsTeamExpanded] = useState<boolean>(true);
-  const [editIsLinksExpanded, setEditIsLinksExpanded] = useState<boolean>(true);
+  // Collapsible Accordion States (Edit Modal - Collapsed by default)
+  const [editIsTeamExpanded, setEditIsTeamExpanded] = useState<boolean>(false);
+  const [editIsLinksExpanded, setEditIsLinksExpanded] = useState<boolean>(false);
+
+  // Section Refs for auto-collapsing on blur / click outside
+  const teamSectionRef = useRef<HTMLDivElement | null>(null);
+  const linksSectionRef = useRef<HTMLDivElement | null>(null);
+  const editTeamSectionRef = useRef<HTMLDivElement | null>(null);
+  const editLinksSectionRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-collapse section when user clicks outside / loses focus
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (isTeamExpanded && teamSectionRef.current && !teamSectionRef.current.contains(target)) {
+        setIsTeamExpanded(false);
+      }
+      if (isLinksExpanded && linksSectionRef.current && !linksSectionRef.current.contains(target)) {
+        setIsLinksExpanded(false);
+      }
+      if (editIsTeamExpanded && editTeamSectionRef.current && !editTeamSectionRef.current.contains(target)) {
+        setEditIsTeamExpanded(false);
+      }
+      if (editIsLinksExpanded && editLinksSectionRef.current && !editLinksSectionRef.current.contains(target)) {
+        setEditIsLinksExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isTeamExpanded, isLinksExpanded, editIsTeamExpanded, editIsLinksExpanded]);
+
+  // Open Create Modal (resets accordions to collapsed)
+  const handleOpenCreateModal = () => {
+    setIsTeamExpanded(false);
+    setIsLinksExpanded(false);
+    setIsCreateModalOpen(true);
+  };
 
   // New Project Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -398,6 +436,8 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
     }));
 
     setEditLinkItems(existingLinks.length > 0 ? existingLinks : [{ id: 'edit-link-1', url: '', linkType: 'Folder' }]);
+    setEditIsTeamExpanded(false);
+    setEditIsLinksExpanded(false);
     setIsEditModalOpen(true);
   };
 
@@ -549,7 +589,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
         {currentUser.Role === 'Admin' && (
           <Button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={handleOpenCreateModal}
             className="group bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-2.5 px-4 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all"
           >
             <Plus className="w-4 h-4 transition-colors" />
@@ -856,7 +896,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             </div>
 
             {/* Seção Retrátil: Equipe */}
-            <div className="border border-[#400404]/15 rounded-xl bg-white/70 overflow-hidden transition-all">
+            <div ref={teamSectionRef} className="border border-[#400404]/15 rounded-xl bg-white/70 overflow-hidden transition-all">
               <button
                 type="button"
                 onClick={() => setIsTeamExpanded(!isTeamExpanded)}
@@ -1068,7 +1108,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             </div>
 
             {/* Seção Retrátil: Links dos Materiais */}
-            <div className="border border-[#400404]/15 rounded-xl bg-white/70 overflow-hidden transition-all">
+            <div ref={linksSectionRef} className="border border-[#400404]/15 rounded-xl bg-white/70 overflow-hidden transition-all">
               <button
                 type="button"
                 onClick={() => setIsLinksExpanded(!isLinksExpanded)}
@@ -1187,7 +1227,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             </div>
 
             {/* Seção Retrátil: Equipe (Edit Modal) */}
-            <div className="border border-[#400404]/15 rounded-xl bg-white/70 overflow-hidden transition-all">
+            <div ref={editTeamSectionRef} className="border border-[#400404]/15 rounded-xl bg-white/70 overflow-hidden transition-all">
               <button
                 type="button"
                 onClick={() => setEditIsTeamExpanded(!editIsTeamExpanded)}
@@ -1364,7 +1404,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             </div>
 
             {/* Seção Retrátil: Links dos Materiais (Edit Modal) */}
-            <div className="border border-[#400404]/15 rounded-xl bg-white/70 overflow-hidden transition-all">
+            <div ref={editLinksSectionRef} className="border border-[#400404]/15 rounded-xl bg-white/70 overflow-hidden transition-all">
               <button
                 type="button"
                 onClick={() => setEditIsLinksExpanded(!editIsLinksExpanded)}
