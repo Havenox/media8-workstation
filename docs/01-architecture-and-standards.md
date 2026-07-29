@@ -1,7 +1,7 @@
 # 01 — Arquitetura, Padrões & Injeção de Ambiente
 
 > **Matriz de Documentação — Pilar 2: Fundação & Padrões**  
-> *Versão:* 3.1.0  
+> *Versão:* 3.2.0  
 > *Status:* Ativo  
 
 ---
@@ -21,7 +21,7 @@ O **Media 8 | Workstation** segue a política de **Zero-Hardcode** e **Centraliz
 
 A navegação da estação PAM utiliza rotas declarativas baseadas em URLs reais:
 - **Layout Shell Persistente (`AppLayout.tsx`)**: O **Sidebar** e o **Header** permanecem fixos e montados continuamente no DOM. Aparelhos de busca, perfil de usuário e atalhos não sofrem re-renders desnecessários.
-- **Renderização Dinâmica do Corpo (`<Outlet />`)**: Apenas o container central de conteúdo (`<main>`) é atualizado dinamicamente conforme a rota ativa (`/` (Dashboard), `/projects`, `/workstation/:projectId`, `/jobs`, `/users`, `/settings`).
+- **Renderização Dinâmica do Corpo (`<Outlet />`)**: Apenas o container central de conteúdo (`<main>`) é atualizado dinamicamente conforme a rota ativa (`/` (Dashboard), `/projects`, `/workstation/:projectId`, `/jobs`, `/users`, `/settings`, `/notifications`).
 - **Nginx SPA Fallback**: Configuração da instrução `try_files $uri $uri/ /index.html;` no Nginx do container Docker, garantindo recarregamento via `F5` e Deep Linking de qualquer rota sem erro 404.
 
 ---
@@ -44,6 +44,15 @@ O Dashboard e os contadores de metadados da aplicação consomem dados numérico
 3. **Funções da Atribuição (PAM Roles)**: Editores vinculados a um projeto possuem funções específicas (`General`, `Decoupage`, `AudioTreatment`, `ColorGrading`, `MotionGraphics`, `Reviewer`), com ícones vetoriais `Lucide React` dedicados.
 4. **Avatar Stack com Popover**: Os Cards de projetos exibem a pilha de avatares com destaque dourado para o Lead Editor e Popover interativo detalhando toda a equipe de atribuição.
 5. **Seções Retráteis & Ingestão Minimalista**: Os modais de cadastro/edição utilizam seções retráteis sutis com rótulos diretos ("Equipe" e "Links dos Materiais") e switch minimalista de 1 linha com o ícone `<RefreshCw />` ("Processar mídias automaticamente") posicionado após os links.
+
+---
+
+## 5. Cabeçalho Superior Fixo & Dinâmico (Breadcrumb, Busca ⌘K, Notificações & Menu Avatar Dropdown)
+
+1. **Breadcrumb & Título Dinâmicos**: Cabeçalho fixo (`Header.tsx`) renderizando automaticamente o caminho (`Home > Projetos`) e título da tela em foco.
+2. **Busca Global CommandK (`GlobalSearch.tsx`)**: Botão no topo com atalho `Ctrl+K` / `Cmd+K` que abre o modal Shadcn `CommandK` para busca e navegação rápida entre páginas.
+3. **Notificações em Popover (`NotificationsDropdown.tsx`)**: Ícone de sininho com badge numérico em destaque de não lidas e Popover com lista de alertas e redirecionamento para `/notifications`.
+4. **Avatar Circular & Menu Dropdown (`UserNav.tsx`)**: Botão circular de avatar com imagem (`AvatarUrl`) ou fallback de iniciais e menu popup com foto grande, e-mail, perfil, configurações e opção de Sair em vermelho.
 
 ---
 
