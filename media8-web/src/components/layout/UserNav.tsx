@@ -1,15 +1,16 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  User,
+  User as UserIcon,
   CreditCard,
   Settings,
   LogOut,
   HelpCircle,
+  Crown,
+  Video,
 } from 'lucide-react';
 
-import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import type { User } from '../../types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,107 +22,138 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface UserNavProps {
+  currentUser: User;
+  onLogout: () => void;
   className?: string;
 }
 
-const UserNav: React.FC<UserNavProps> = ({ className }) => {
-  const { user, logout } = useAuth();
+export const UserNav: React.FC<UserNavProps> = ({ currentUser, onLogout, className }) => {
   const navigate = useNavigate();
 
-  if (!user) return null;
+  if (!currentUser) return null;
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const initials = user.Name
-    .split(' ')
-    .map((n) => n.charAt(0))
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = currentUser.Name
+    ? currentUser.Name.split(' ')
+        .filter(Boolean)
+        .map((n) => n.charAt(0))
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : 'U';
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="flex items-center gap-2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className={`flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-[#400404]/30 cursor-pointer ${className || ''}`}
           aria-label="Menu do usuário"
         >
-          <Avatar className="h-9 w-9 cursor-pointer ring-2 ring-primary/20 hover:ring-primary/40 transition-all">
-            <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <div className="w-9 h-9 rounded-full bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center overflow-hidden border-2 border-[#400404]/30 hover:border-[#400404] shadow-xs transition-all">
+            {currentUser.AvatarUrl ? (
+              <img
+                src={currentUser.AvatarUrl}
+                alt={currentUser.Name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span>{initials}</span>
+            )}
+          </div>
         </button>
       </DropdownMenuTrigger>
+
       <DropdownMenuContent
-        className="w-64 bg-popover border border-border shadow-xl"
+        className="w-64 bg-[#FFFBED] border border-[#400404]/25 text-[#400404] shadow-xl rounded-2xl p-1"
         align="end"
         sideOffset={8}
       >
         {/* User Info Header */}
-        <DropdownMenuLabel className="font-normal p-4">
+        <DropdownMenuLabel className="font-normal p-3 bg-[#400404]/5 rounded-xl border border-[#400404]/10 mb-1">
           <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <div className="w-10 h-10 rounded-full bg-[#400404] text-[#FFFBED] font-semibold text-sm flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+              {currentUser.AvatarUrl ? (
+                <img
+                  src={currentUser.AvatarUrl}
+                  alt={currentUser.Name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+
             <div className="flex flex-col space-y-0.5 overflow-hidden">
-              <p className="text-sm font-semibold text-foreground truncate">
-                {user.Name}
+              <p className="text-xs font-semibold text-[#400404] truncate">
+                {currentUser.Name}
               </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {user.Email}
+              <p className="text-[11px] text-[#5C1212]/80 truncate font-mono">
+                {currentUser.Email}
               </p>
+              <div className="flex items-center gap-1 pt-0.5">
+                {currentUser.Role === 'Admin' ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-900 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.2 rounded-full">
+                    <Crown className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                    <span>Admin</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#400404] bg-[#400404]/10 border border-[#400404]/15 px-1.5 py-0.2 rounded-full">
+                    <Video className="w-2.5 h-2.5 text-[#400404]/70 shrink-0" />
+                    <span>Editor</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </DropdownMenuLabel>
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-[#400404]/15 my-1" />
 
         {/* Navigation Group */}
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link to="/settings" className="cursor-pointer">
-              <User className="mr-3 h-4 w-4" />
-              <span>Meu Perfil</span>
-            </Link>
+        <DropdownMenuGroup className="space-y-0.5">
+          <DropdownMenuItem
+            onClick={() => navigate('/settings')}
+            className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 transition-colors flex items-center gap-2.5"
+          >
+            <UserIcon className="w-4 h-4 text-[#400404]/80 shrink-0" />
+            <span>Meu Perfil</span>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/settings" className="cursor-pointer">
-              <CreditCard className="mr-3 h-4 w-4" />
-              <span>Minha Assinatura</span>
-            </Link>
+
+          <DropdownMenuItem
+            onClick={() => navigate('/settings')}
+            className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 transition-colors flex items-center gap-2.5"
+          >
+            <CreditCard className="w-4 h-4 text-[#400404]/80 shrink-0" />
+            <span>Minha Assinatura</span>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/settings" className="cursor-pointer">
-              <Settings className="mr-3 h-4 w-4" />
-              <span>Configurações</span>
-            </Link>
+
+          <DropdownMenuItem
+            onClick={() => navigate('/settings')}
+            className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 transition-colors flex items-center gap-2.5"
+          >
+            <Settings className="w-4 h-4 text-[#400404]/80 shrink-0" />
+            <span>Configurações</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-[#400404]/15 my-1" />
 
         {/* Help */}
-        <DropdownMenuItem asChild>
-          <Link to="/" className="cursor-pointer">
-            <HelpCircle className="mr-3 h-4 w-4" />
-            <span>Ajuda & Suporte</span>
-          </Link>
+        <DropdownMenuItem
+          onClick={() => window.open('https://media8.com.br', '_blank')}
+          className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 transition-colors flex items-center gap-2.5"
+        >
+          <HelpCircle className="w-4 h-4 text-[#400404]/80 shrink-0" />
+          <span>Ajuda & Suporte</span>
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-[#400404]/15 my-1" />
 
         {/* Logout */}
         <DropdownMenuItem
-          onClick={handleLogout}
-          className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+          onClick={onLogout}
+          className="cursor-pointer text-xs font-semibold text-red-700 hover:bg-red-500/15 hover:text-red-900 rounded-lg p-2 transition-colors flex items-center gap-2.5"
         >
-          <LogOut className="mr-3 h-4 w-4" />
+          <LogOut className="w-4 h-4 text-red-700 shrink-0" />
           <span>Sair</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

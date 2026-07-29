@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Check, CheckCheck, Package, Info, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Bell, CheckCheck, Package, Info, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -10,9 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNotifications, Notification } from '@/contexts/NotificationsContext';
-import { cn } from '@/lib/utils';
 
 const getNotificationIcon = (type: Notification['type']) => {
   switch (type) {
@@ -30,13 +28,13 @@ const getNotificationIcon = (type: Notification['type']) => {
 const getNotificationColor = (type: Notification['type']) => {
   switch (type) {
     case 'order':
-      return 'text-primary bg-primary/10';
+      return 'text-[#400404] bg-[#400404]/10 border border-[#400404]/20';
     case 'success':
-      return 'text-success bg-success/10';
+      return 'text-emerald-800 bg-emerald-500/10 border border-emerald-500/20';
     case 'warning':
-      return 'text-warning bg-warning/10';
+      return 'text-amber-800 bg-amber-500/10 border border-amber-500/20';
     default:
-      return 'text-muted-foreground bg-muted';
+      return 'text-[#5C1212] bg-[#400404]/5 border border-[#400404]/15';
   }
 };
 
@@ -62,28 +60,27 @@ const NotificationItem: React.FC<{
   return (
     <button
       onClick={handleClick}
-      className={cn(
-        'w-full text-left p-3 hover:bg-muted/50 transition-colors border-b border-border last:border-0',
-        !notification.read && 'bg-primary/5'
-      )}
+      className={`w-full text-left p-3 hover:bg-[#400404]/5 transition-colors border-b border-[#400404]/10 last:border-0 cursor-pointer ${
+        !notification.read ? 'bg-[#FFFBED]' : 'bg-white/60'
+      }`}
     >
-      <div className="flex gap-3">
-        <div className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', colorClass)}>
-          <Icon className="h-4 w-4" />
+      <div className="flex gap-3 items-start">
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${colorClass}`}>
+          <Icon className="h-3.5 w-3.5" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <p className={cn('text-sm font-medium truncate', !notification.read && 'text-foreground')}>
+            <p className={`text-xs font-semibold text-[#400404] truncate ${!notification.read ? 'font-bold' : ''}`}>
               {notification.title}
             </p>
             {!notification.read && (
-              <span className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1.5" />
+              <span className="w-2 h-2 rounded-full bg-red-600 shrink-0 mt-1" />
             )}
           </div>
-          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+          <p className="text-[11px] text-[#5C1212]/80 line-clamp-2 mt-0.5">
             {notification.message}
           </p>
-          <p className="text-xs text-muted-foreground/60 mt-1">
+          <p className="text-[10px] text-[#5C1212]/60 mt-1 font-mono">
             {formatDistanceToNow(new Date(notification.createdAt), {
               addSuffix: true,
               locale: ptBR,
@@ -95,41 +92,44 @@ const NotificationItem: React.FC<{
   );
 };
 
-const NotificationsDropdown: React.FC = () => {
+export const NotificationsDropdown: React.FC = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
 
   const recentNotifications = notifications.slice(0, 5);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon-sm" className="relative">
-          <Bell className="h-5 w-5" />
+        <button
+          type="button"
+          className="relative p-2 text-[#400404] hover:bg-[#400404]/10 rounded-full transition-colors cursor-pointer focus:outline-none"
+          title="Notificações"
+        >
+          <Bell className="h-4 h-4 text-[#400404]" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center">
+            <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#FFFBED] shadow-xs">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
-        </Button>
+        </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end" sideOffset={8}>
-        <div className="flex items-center justify-between p-3 border-b border-border">
-          <h3 className="font-semibold text-foreground">Notificações</h3>
+      <PopoverContent className="w-80 p-0 bg-[#FFFBED] border border-[#400404]/25 shadow-xl rounded-2xl overflow-hidden" align="end" sideOffset={8}>
+        <div className="flex items-center justify-between p-3 border-b border-[#400404]/15 bg-[#400404]/5">
+          <h3 className="font-semibold text-xs text-[#400404]">Notificações</h3>
           {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7 px-2"
+            <button
+              type="button"
+              className="text-[11px] font-medium text-[#400404] hover:underline flex items-center gap-1 cursor-pointer"
               onClick={markAllAsRead}
             >
-              <CheckCheck className="h-3.5 w-3.5 mr-1" />
-              Marcar todas como lidas
-            </Button>
+              <CheckCheck className="h-3.5 w-3.5 text-emerald-700" />
+              <span>Marcar todas como lidas</span>
+            </button>
           )}
         </div>
 
-        <ScrollArea className="max-h-80">
+        <div className="max-h-80 overflow-y-auto">
           {recentNotifications.length > 0 ? (
             recentNotifications.map((notification) => (
               <NotificationItem
@@ -140,18 +140,21 @@ const NotificationsDropdown: React.FC = () => {
               />
             ))
           ) : (
-            <div className="p-6 text-center text-muted-foreground">
-              <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Nenhuma notificação</p>
+            <div className="p-6 text-center text-[#5C1212]/60">
+              <Bell className="h-6 w-6 mx-auto mb-2 opacity-40 text-[#400404]" />
+              <p className="text-xs">Nenhuma notificação recente</p>
             </div>
           )}
-        </ScrollArea>
+        </div>
 
-        <div className="p-2 border-t border-border">
-          <Link to="/notifications" onClick={() => setOpen(false)}>
-            <Button variant="ghost" size="sm" className="w-full text-primary hover:text-primary">
-              Ver todas as notificações
-            </Button>
+        <div className="p-2 border-t border-[#400404]/15 bg-white/50 text-center">
+          <Link
+            to="/notifications"
+            onClick={() => setOpen(false)}
+            className="w-full text-xs font-semibold text-[#400404] hover:text-[#5C1212] flex items-center justify-center gap-1 py-1"
+          >
+            <span>Ver todas as notificações</span>
+            <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </PopoverContent>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, FileVideo, User, Bell, Settings, CreditCard } from 'lucide-react';
+import { Search, FolderKanban, Users, Bell, Settings, LayoutDashboard, Video } from 'lucide-react';
 import {
   CommandDialog,
   CommandEmpty,
@@ -9,38 +9,24 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
+import type { User } from '../../types';
 
-// Mock data - would come from API in real implementation
-const mockOrders = [
-  { id: '1234', title: 'Vídeo Institucional - Empresa ABC', status: 'Em Edição' },
-  { id: '1235', title: 'Reels Instagram - Campanha Verão', status: 'Aguardando Aprovação' },
-  { id: '1236', title: 'YouTube Shorts - Tutorial Produto', status: 'Concluído' },
-  { id: '1237', title: 'TikTok - Trend Dance Challenge', status: 'Em Edição' },
-  { id: '1238', title: 'Vídeo Corporativo - Relatório Anual', status: 'Aguardando Briefing' },
-];
+interface GlobalSearchProps {
+  currentUser: User;
+}
 
-const mockUsers = [
-  { id: '1', name: 'João Silva', email: 'joao@email.com', role: 'Cliente' },
-  { id: '2', name: 'Maria Santos', email: 'maria@email.com', role: 'Editor' },
-  { id: '3', name: 'Carlos Oliveira', email: 'carlos@email.com', role: 'Admin' },
-];
+export const GlobalSearch: React.FC<GlobalSearchProps> = ({ currentUser }) => {
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
-const GlobalSearch: React.FC = () => {
-const [open, setOpen] = useState(false);
-const navigate = useNavigate();
-const { user } = useAuth();
+  const isAdmin = currentUser.Role === 'Admin';
 
-// PascalCase: user.Role
-const isStaff = user?.Role === 'Admin' || user?.Role === 'Editor';
-
-  // Keyboard shortcut to open search
+  // Keyboard shortcut to open search (Cmd+K or Ctrl+K)
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        setOpen((prev) => !prev);
       }
     };
 
@@ -55,97 +41,93 @@ const isStaff = user?.Role === 'Admin' || user?.Role === 'Editor';
 
   return (
     <>
-      <Button
-        variant="outline"
-        className="relative h-9 w-64 justify-start text-sm text-muted-foreground bg-muted/50 border-0 hover:bg-muted"
+      <button
+        type="button"
         onClick={() => setOpen(true)}
+        className="flex items-center justify-between w-48 sm:w-64 px-3 py-1.5 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs text-[#5C1212]/70 transition-all shadow-xs cursor-pointer"
       >
-        <Search className="mr-2 h-4 w-4" />
-        <span>Buscar...</span>
-        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-          <span className="text-xs">⌘</span>K
+        <span className="flex items-center gap-2">
+          <Search className="w-3.5 h-3.5 text-[#400404]/70 shrink-0" />
+          <span className="font-normal text-[#400404]/70">Buscar...</span>
+        </span>
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-medium text-[#400404] bg-[#400404]/5 border border-[#400404]/15 rounded-md">
+          <span>⌘</span>K
         </kbd>
-      </Button>
+      </button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Buscar pedidos, usuários, páginas..." />
-        <CommandList>
-          <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+        <div className="bg-[#FFFBED] text-[#400404] border border-[#400404]/20 rounded-2xl overflow-hidden shadow-2xl">
+          <CommandInput
+            placeholder="Buscar páginas, projetos, esteiras..."
+            className="border-b border-[#400404]/15 text-xs text-[#400404] placeholder:text-[#5C1212]/50"
+          />
+          <CommandList className="p-2 max-h-80 overflow-y-auto">
+            <CommandEmpty className="p-4 text-center text-xs text-[#5C1212]/60">
+              Nenhum resultado encontrado.
+            </CommandEmpty>
 
-          {/* Quick Navigation */}
-          <CommandGroup heading="Navegação Rápida">
-            <CommandItem onSelect={() => handleSelect('/dashboard')}>
-              <Search className="mr-2 h-4 w-4" />
-              Dashboard
-            </CommandItem>
-            <CommandItem onSelect={() => handleSelect('/orders')}>
-              <FileVideo className="mr-2 h-4 w-4" />
-              Pedidos
-            </CommandItem>
-            <CommandItem onSelect={() => handleSelect('/orders/new')}>
-              <FileVideo className="mr-2 h-4 w-4" />
-              Novo Pedido
-            </CommandItem>
-            <CommandItem onSelect={() => handleSelect('/notifications')}>
-              <Bell className="mr-2 h-4 w-4" />
-              Notificações
-            </CommandItem>
-            <CommandItem onSelect={() => handleSelect('/settings')}>
-              <Settings className="mr-2 h-4 w-4" />
-              Configurações
-            </CommandItem>
-            {isStaff && (
-              <>
-                <CommandItem onSelect={() => handleSelect('/users')}>
-                  <User className="mr-2 h-4 w-4" />
-                  Usuários
-                </CommandItem>
-                <CommandItem onSelect={() => handleSelect('/credits')}>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Créditos
-                </CommandItem>
-              </>
-            )}
-          </CommandGroup>
-
-          {/* Orders */}
-          <CommandGroup heading="Pedidos Recentes">
-            {mockOrders.map((order) => (
+            {/* Quick Navigation */}
+            <CommandGroup heading="Navegação Rápida" className="text-[10px] uppercase font-mono font-semibold text-[#5C1212]/70 px-2 py-1">
               <CommandItem
-                key={order.id}
-                onSelect={() => handleSelect(`/orders/${order.id}`)}
+                onSelect={() => handleSelect('/')}
+                className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 flex items-center gap-2"
               >
-                <FileVideo className="mr-2 h-4 w-4" />
-                <div className="flex flex-col">
-                  <span>{order.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    #{order.id} • {order.status}
-                  </span>
-                </div>
+                <LayoutDashboard className="w-4 h-4 text-[#400404] shrink-0" />
+                <span>Dashboard</span>
               </CommandItem>
-            ))}
-          </CommandGroup>
 
-          {/* Users (Admin only) */}
-          {isStaff && (
-            <CommandGroup heading="Usuários">
-              {mockUsers.map((u) => (
+              <CommandItem
+                onSelect={() => handleSelect('/projects')}
+                className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 flex items-center gap-2"
+              >
+                <FolderKanban className="w-4 h-4 text-[#400404] shrink-0" />
+                <span>Projetos</span>
+              </CommandItem>
+
+              <CommandItem
+                onSelect={() => handleSelect('/workstation')}
+                className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 flex items-center gap-2"
+              >
+                <Video className="w-4 h-4 text-[#400404] shrink-0" />
+                <span>Workstation PAM</span>
+              </CommandItem>
+
+              <CommandItem
+                onSelect={() => handleSelect('/jobs')}
+                className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 flex items-center gap-2"
+              >
+                <Search className="w-4 h-4 text-[#400404] shrink-0" />
+                <span>Esteira de Ingestão</span>
+              </CommandItem>
+
+              {isAdmin && (
                 <CommandItem
-                  key={u.id}
-                  onSelect={() => handleSelect(`/users`)}
+                  onSelect={() => handleSelect('/users')}
+                  className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 flex items-center gap-2"
                 >
-                  <User className="mr-2 h-4 w-4" />
-                  <div className="flex flex-col">
-                    <span>{u.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {u.email} • {u.role}
-                    </span>
-                  </div>
+                  <Users className="w-4 h-4 text-[#400404] shrink-0" />
+                  <span>Usuários</span>
                 </CommandItem>
-              ))}
+              )}
+
+              <CommandItem
+                onSelect={() => handleSelect('/notifications')}
+                className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 flex items-center gap-2"
+              >
+                <Bell className="w-4 h-4 text-[#400404] shrink-0" />
+                <span>Notificações</span>
+              </CommandItem>
+
+              <CommandItem
+                onSelect={() => handleSelect('/settings')}
+                className="cursor-pointer text-xs font-medium text-[#400404] hover:bg-[#400404]/10 rounded-lg p-2 flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4 text-[#400404] shrink-0" />
+                <span>Configurações</span>
+              </CommandItem>
             </CommandGroup>
-          )}
-        </CommandList>
+          </CommandList>
+        </div>
       </CommandDialog>
     </>
   );

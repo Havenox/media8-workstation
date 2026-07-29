@@ -17,6 +17,8 @@ import { WorkstationPage } from './pages/WorkstationPage';
 import { JobsPage } from './pages/JobsPage';
 import { UsersPage } from './pages/UsersPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { NotificationsProvider } from './contexts/NotificationsContext';
 import { Loader2 } from 'lucide-react';
 
 interface RequireAuthProps {
@@ -293,6 +295,7 @@ export function AppContent() {
           }
         />
         <Route path="/settings" element={currentUser && <SettingsPage currentUser={currentUser} />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/config" element={<Navigate to="/settings" replace />} />
         <Route path="/storage" element={<Navigate to="/settings" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -304,7 +307,9 @@ export function AppContent() {
 export function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <NotificationsProvider>
+        <AppContent />
+      </NotificationsProvider>
     </BrowserRouter>
   );
 }
