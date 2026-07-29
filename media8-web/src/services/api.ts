@@ -132,6 +132,8 @@ export const ProjectService = {
     Deadline?: string;
     AutoIngest?: boolean;
     CreatedByUserId: string;
+    LeadUserId?: string;
+    AssignedEditors?: { UserId: string; AssignmentRole: string; IsLead?: boolean }[];
     Links?: ProjectLink[];
   }): Promise<Project> => {
     const response = await api.post<Project>('/Projects', projectData);
@@ -145,6 +147,8 @@ export const ProjectService = {
     Deadline?: string;
     Status: string;
     AutoIngest?: boolean;
+    LeadUserId?: string;
+    AssignedEditors?: { UserId: string; AssignmentRole: string; IsLead?: boolean }[];
     Links?: ProjectLink[];
   }): Promise<Project> => {
     const response = await api.put<Project>(`/Projects/${id}`, projectData);

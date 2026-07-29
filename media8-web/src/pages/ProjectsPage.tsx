@@ -19,6 +19,12 @@ import {
   Clock,
   Zap,
   CheckCircle2,
+  Crown,
+  Scissors,
+  Volume2,
+  Palette,
+  UserPlus,
+  Users,
 } from 'lucide-react';
 import { format, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -42,6 +48,17 @@ import {
   DialogFooter,
 } from '../components/ui/dialog';
 
+export const PAM_ROLES = [
+  { id: 'General', label: 'Edição Geral / Lead', icon: Film, badgeColor: 'bg-[#400404] text-[#FFFBED]' },
+  { id: 'Decoupage', label: 'Decoupagem & Seleção', icon: Scissors, badgeColor: 'bg-amber-100 text-amber-900 border-amber-300 border' },
+  { id: 'AudioTreatment', label: 'Tratamento de Áudio', icon: Volume2, badgeColor: 'bg-blue-100 text-blue-900 border-blue-300 border' },
+  { id: 'ColorGrading', label: 'Color Grading', icon: Palette, badgeColor: 'bg-purple-100 text-purple-900 border-purple-300 border' },
+  { id: 'MotionGraphics', label: 'Motion Graphics / VFX', icon: Zap, badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-300 border' },
+  { id: 'Reviewer', label: 'Revisão / Controle QC', icon: CheckCircle2, badgeColor: 'bg-stone-100 text-stone-900 border-stone-300 border' },
+] as const;
+
+export type PamRoleType = typeof PAM_ROLES[number]['id'];
+
 interface ProjectsPageProps {
   currentUser: User;
   users: User[];
@@ -54,8 +71,14 @@ interface FormLinkItem {
   linkType: LinkTypeOption;
 }
 
+interface FormEditorAssignment {
+  UserId: string;
+  AssignmentRole: PamRoleType;
+}
+
 export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   currentUser,
+  users = [],
   onOpenWorkstation,
 }) => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -77,6 +100,10 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const [selectedDeadline, setSelectedDeadline] = useState<Date | undefined>(undefined);
   const [autoIngest, setAutoIngest] = useState<boolean>(true);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [leadUserId, setLeadUserId] = useState<string>(currentUser.UserId);
+  const [additionalEditors, setAdditionalEditors] = useState<FormEditorAssignment[]>([]);
+  const [selectedAddUser, setSelectedAddUser] = useState<string>('');
+  const [selectedAddRole, setSelectedAddRole] = useState<PamRoleType>('Decoupage');
 
   // Edit Project Modal State
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -88,6 +115,10 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const [editStatus, setEditStatus] = useState<string>('InProduction');
   const [editAutoIngest, setEditAutoIngest] = useState<boolean>(true);
   const [editLinkItems, setEditLinkItems] = useState<FormLinkItem[]>([]);
+  const [editLeadUserId, setEditLeadUserId] = useState<string>('');
+  const [editAdditionalEditors, setEditAdditionalEditors] = useState<FormEditorAssignment[]>([]);
+  const [editSelectedAddUser, setEditSelectedAddUser] = useState<string>('');
+  const [editSelectedAddRole, setEditSelectedAddRole] = useState<PamRoleType>('Decoupage');
 
   const [linkItems, setLinkItems] = useState<FormLinkItem[]>([
     { id: 'link-1', url: '', linkType: 'Folder' },
@@ -99,6 +130,41 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
   const observerTarget = useRef<HTMLDivElement | null>(null);
   const today = startOfDay(new Date());
+
+  const handleAddAdditionalEditor = (isEdit: boolean = false) => {
+    const targetUserId = isEdit ? editSelectedAddUser : selectedAddUser;
+    const targetRole = isEdit ? editSelectedAddRole : selectedAddRole;
+    const currentLead = isEdit ? editLeadUserId : leadUserId;
+
+    if (!targetUserId) return;
+    if (targetUserId === currentLead) {
+      alert('O Editor Responsável já está atribuído como Lead do projeto.');
+      return;
+    }
+
+    const currentList = isEdit ? editAdditionalEditors : additionalEditors;
+    if (currentList.some((e) => e.UserId === targetUserId)) {
+      alert('Este usuário já foi adicionado à equipe do projeto.');
+      return;
+    }
+
+    const newItem: FormEditorAssignment = { UserId: targetUserId, AssignmentRole: targetRole };
+    if (isEdit) {
+      setEditAdditionalEditors((prev) => [...prev, newItem]);
+      setEditSelectedAddUser('');
+    } else {
+      setAdditionalEditors((prev) => [...prev, newItem]);
+      setSelectedAddUser('');
+    }
+  };
+
+  const handleRemoveAdditionalEditor = (userId: string, isEdit: boolean = false) => {
+    if (isEdit) {
+      setEditAdditionalEditors((prev) => prev.filter((e) => e.UserId !== userId));
+    } else {
+      setAdditionalEditors((prev) => prev.filter((e) => e.UserId !== userId));
+    }
+  };
 
   // Fetch Page 1 on Filter/Search Change
   const fetchInitialProjects = useCallback(async () => {
@@ -270,6 +336,8 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
         Deadline: selectedDeadline ? selectedDeadline.toISOString() : undefined,
         AutoIngest: autoIngest,
         CreatedByUserId: currentUser.UserId,
+        LeadUserId: leadUserId || undefined,
+        AssignedEditors: additionalEditors,
         Links: validLinks,
       });
 
@@ -278,6 +346,9 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
       setExternalOrderReference('');
       setSelectedDeadline(undefined);
       setAutoIngest(true);
+      setLeadUserId(currentUser.UserId);
+      setAdditionalEditors([]);
+      setSelectedAddUser('');
       setLinkItems([{ id: 'link-1', url: '', linkType: 'Folder' }]);
       setIsCreateModalOpen(false);
       fetchInitialProjects();
@@ -299,6 +370,15 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
     setEditDeadline(proj.Deadline ? new Date(proj.Deadline) : undefined);
     setEditStatus(proj.Status);
     setEditAutoIngest(proj.AutoIngest ?? true);
+
+    const initialLeadId = proj.LeadUserId || proj.AssignedEditors?.find(e => e.IsLead)?.UserId || proj.CreatedByUserId || currentUser.UserId;
+    setEditLeadUserId(initialLeadId);
+
+    const initialAddEditors: FormEditorAssignment[] = (proj.AssignedEditors || [])
+      .filter(e => e.UserId !== initialLeadId)
+      .map(e => ({ UserId: e.UserId, AssignmentRole: e.AssignmentRole || 'General' }));
+    setEditAdditionalEditors(initialAddEditors);
+    setEditSelectedAddUser('');
 
     const existingLinks: FormLinkItem[] = (proj.Links || []).map((l, idx) => ({
       id: `edit-link-${idx}-${l.ProjectLinkId}`,
@@ -342,6 +422,8 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
         Deadline: editDeadline ? editDeadline.toISOString() : undefined,
         Status: editStatus,
         AutoIngest: editAutoIngest,
+        LeadUserId: editLeadUserId || undefined,
+        AssignedEditors: editAdditionalEditors,
         Links: validLinks,
       });
 
@@ -601,11 +683,92 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 </div>
 
                 <div className="pt-3 border-t border-[#400404]/10 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 text-xs text-[#400404]/80 font-medium font-mono">
                       <Film className="w-3.5 h-3.5 text-[#400404]/60" />
                       <span>{proj.Assets?.length || 0} mídias</span>
                     </div>
+
+                    {/* Team Avatar Stack */}
+                    {proj.AssignedEditors && proj.AssignedEditors.length > 0 && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex items-center -space-x-2 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity p-0.5 rounded-full"
+                            title="Ver equipe de atribuição"
+                          >
+                            {proj.AssignedEditors.slice(0, 4).map((ed) => {
+                              const isLead = ed.IsLead || ed.UserId === proj.LeadUserId;
+                              const userAvatar = ed.User?.AvatarUrl;
+                              const userName = ed.User?.Name || 'Editor';
+                              const firstLetter = userName.charAt(0).toUpperCase();
+
+                              return (
+                                <div
+                                  key={ed.ProjectEditorId || ed.UserId}
+                                  className={`relative w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-[#FFFBED] bg-[#400404] ring-2 ring-white shadow-xs overflow-hidden shrink-0 ${
+                                    isLead ? 'ring-amber-400 border border-amber-400' : ''
+                                  }`}
+                                >
+                                  {userAvatar ? (
+                                    <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
+                                  ) : (
+                                    firstLetter
+                                  )}
+                                  {isLead && (
+                                    <Crown className="w-2.5 h-2.5 text-amber-400 absolute -top-0.5 -right-0.5 drop-shadow-xs" />
+                                  )}
+                                </div>
+                              );
+                            })}
+
+                            {proj.AssignedEditors.length > 4 && (
+                              <div className="w-6 h-6 rounded-full bg-[#5C1212] text-[#FFFBED] font-mono text-[9px] font-semibold flex items-center justify-center ring-2 ring-white shrink-0">
+                                +{proj.AssignedEditors.length - 4}
+                              </div>
+                            )}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 bg-white border border-[#400404]/15 shadow-md p-3 rounded-xl space-y-2">
+                          <div className="flex items-center justify-between border-b border-[#400404]/10 pb-2">
+                            <span className="text-xs font-semibold text-[#400404] tracking-tight flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-[#400404]/70" />
+                              Equipe Atribuída ({proj.AssignedEditors.length})
+                            </span>
+                          </div>
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {proj.AssignedEditors.map((ed) => {
+                              const isLead = ed.IsLead || ed.UserId === proj.LeadUserId;
+                              const userAvatar = ed.User?.AvatarUrl;
+                              const userName = ed.User?.Name || 'Editor Desconhecido';
+                              const roleConfig = PAM_ROLES.find((r) => r.id === ed.AssignmentRole) || PAM_ROLES[0];
+                              const RoleIcon = roleConfig.icon;
+
+                              return (
+                                <div key={ed.ProjectEditorId || ed.UserId} className="flex items-center justify-between gap-2 text-xs">
+                                  <div className="flex items-center gap-2 truncate">
+                                    <div className={`w-7 h-7 rounded-full bg-[#400404] text-[#FFFBED] font-semibold text-[10px] flex items-center justify-center shrink-0 overflow-hidden ${isLead ? 'ring-2 ring-amber-400' : ''}`}>
+                                      {userAvatar ? <img src={userAvatar} alt={userName} className="w-full h-full object-cover" /> : userName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="truncate">
+                                      <p className="font-medium text-[#400404] truncate flex items-center gap-1">
+                                        <span>{userName}</span>
+                                        {isLead && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <span className={`text-[9px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0 ${roleConfig.badgeColor}`}>
+                                    <RoleIcon className="w-2.5 h-2.5" />
+                                    <span>{roleConfig.label}</span>
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    )}
 
                     {currentUser.Role === 'Admin' && (
                       <div className="flex items-center gap-1 ml-1">
@@ -657,7 +820,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-[#400404] tracking-tight">Cadastrar Novo Projeto</DialogTitle>
             <DialogDescription className="text-xs text-[#5C1212]/80 font-normal">
-              Cadastre um novo projeto de edição manualmente com links de mídias e chave CRM.
+              Cadastre um novo projeto de edição manualmente com atribuições de editores, links de mídias e chave CRM.
             </DialogDescription>
           </DialogHeader>
 
@@ -681,6 +844,123 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
               />
             </div>
 
+            {/* Editor Responsável (Lead Editor) */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#400404] flex items-center gap-1.5">
+                <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>Editor Responsável (Lead Editor) *</span>
+              </label>
+              <select
+                value={leadUserId}
+                onChange={(e) => setLeadUserId(e.target.value)}
+                required
+                className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:ring-2 focus:ring-[#400404]/20 focus:outline-none cursor-pointer"
+              >
+                {users.map((u) => (
+                  <option key={u.UserId} value={u.UserId}>
+                    {u.Name} ({u.Email}) — {u.Role}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Equipe do Projeto & Funções PAM */}
+            <div className="space-y-2 pt-2 border-t border-[#400404]/15">
+              <label className="text-xs font-semibold text-[#400404] flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-[#400404]/70 shrink-0" />
+                  <span>Equipe do Projeto & Especialidades (PAM)</span>
+                </span>
+                <span className="text-[10px] text-[#5C1212]/70 font-normal">
+                  {additionalEditors.length} integrante(s) adicional(is)
+                </span>
+              </label>
+
+              {additionalEditors.length > 0 && (
+                <div className="space-y-2 bg-white p-3 rounded-xl border border-[#400404]/15">
+                  {additionalEditors.map((ed) => {
+                    const matchedUser = users.find((u) => u.UserId === ed.UserId);
+                    const roleConfig = PAM_ROLES.find((r) => r.id === ed.AssignmentRole) || PAM_ROLES[0];
+                    const RoleIcon = roleConfig.icon;
+
+                    return (
+                      <div key={ed.UserId} className="flex items-center justify-between gap-2 p-2 bg-[#FFFBED]/60 rounded-lg border border-[#400404]/10 text-xs">
+                        <div className="flex items-center gap-2 truncate">
+                          <div className="w-6 h-6 rounded-full bg-[#400404] text-[#FFFBED] text-[10px] font-semibold flex items-center justify-center shrink-0 overflow-hidden">
+                            {matchedUser?.AvatarUrl ? (
+                              <img src={matchedUser.AvatarUrl} alt={matchedUser.Name} className="w-full h-full object-cover" />
+                            ) : (
+                              matchedUser?.Name ? matchedUser.Name.charAt(0).toUpperCase() : 'U'
+                            )}
+                          </div>
+                          <div className="truncate">
+                            <span className="font-medium text-[#400404] truncate block">{matchedUser?.Name || 'Editor'}</span>
+                            <span className="text-[10px] text-[#5C1212]/70 block font-mono">{matchedUser?.Email}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${roleConfig.badgeColor}`}>
+                            <RoleIcon className="w-3 h-3 shrink-0" />
+                            <span>{roleConfig.label}</span>
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAdditionalEditor(ed.UserId, false)}
+                            className="p-1 text-red-700/80 hover:text-red-900 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                            title="Remover integrante"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+                <select
+                  value={selectedAddUser}
+                  onChange={(e) => setSelectedAddUser(e.target.value)}
+                  className="w-full sm:w-1/2 p-2 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:outline-none cursor-pointer"
+                >
+                  <option value="">Selecione um editor...</option>
+                  {users
+                    .filter((u) => u.UserId !== leadUserId && !additionalEditors.some((ae) => ae.UserId === u.UserId))
+                    .map((u) => (
+                      <option key={u.UserId} value={u.UserId}>
+                        {u.Name} ({u.Email})
+                      </option>
+                    ))}
+                </select>
+
+                <select
+                  value={selectedAddRole}
+                  onChange={(e) => setSelectedAddRole(e.target.value as PamRoleType)}
+                  className="w-full sm:w-1/3 p-2 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:outline-none cursor-pointer"
+                >
+                  {PAM_ROLES.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleAddAdditionalEditor(false)}
+                  disabled={!selectedAddUser}
+                  className="w-full sm:w-auto text-xs font-medium py-2 px-3 border-[#400404]/25 text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] shrink-0 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <span>Adicionar</span>
+                </Button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-[#400404]">ID do Pedido (Opcional - CRM Ref)</label>
@@ -702,7 +982,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                       className="w-full flex items-center justify-between p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] hover:border-[#400404] transition-colors focus:ring-2 focus:ring-[#400404] cursor-pointer"
                     >
                       <span className="flex items-center gap-2">
-                        <CalendarIcon className="w-4 h-4 text-[#400404]/70" />
+                        <CalendarIcon className="w-4 h-4 text-[#400404]/70 shrink-0" />
                         {selectedDeadline ? (
                           format(selectedDeadline, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                         ) : (
@@ -757,7 +1037,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             <div className="p-3.5 bg-white border border-[#400404]/15 rounded-xl flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-[#400404] flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-[#400404]" />
+                  <Zap className="w-4 h-4 text-[#400404] shrink-0" />
                   <span>Ingestão Automática de Mídias</span>
                 </p>
                 <p className="text-[11px] text-[#5C1212]/80 font-normal mt-0.5">
@@ -777,9 +1057,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             </div>
 
             <div className="space-y-2 pt-2 border-t border-[#400404]/15">
-              <label className="text-xs font-semibold text-[#400404] block">
-                Link dos Arquivos (Google Drive, Mídias, Áudios, PDFs)
-              </label>
+              <label className="text-xs font-semibold text-[#400404] block">Gerenciar Links do Projeto</label>
 
               <div className="space-y-2.5">
                 {linkItems.map((item) => (
@@ -791,32 +1069,29 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
                     <Input
                       type="url"
-                      placeholder="Ex: https://drive.google.com/drive/folders/..."
+                      placeholder="https://drive.google.com/drive/folders/..."
                       value={item.url}
                       onChange={(e) => handleLinkChange(item.id, 'url', e.target.value)}
                       className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 flex-1"
                     />
 
-                    {linkItems.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveLinkField(item.id)}
-                        className="p-2 text-red-700/80 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                        title="Remover Link"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveLinkField(item.id)}
+                      className="p-2 text-red-700/80 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4 shrink-0" />
+                    </button>
                   </div>
                 ))}
               </div>
 
               <button
                 type="button"
-                onClick={() => handleAddLinkField(false)}
-                className="group w-full mt-3 py-2 px-4 rounded-xl border border-[#400404]/25 bg-white text-[#400404] font-medium text-xs hover:bg-[#400404] hover:text-[#FFFBED] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99]"
+                onClick={() => handleAddLinkField()}
+                className="group w-full mt-3 py-2 px-4 rounded-xl border border-[#400404]/25 bg-white text-[#400404] font-medium text-xs hover:bg-[#400404] hover:text-[#FFFBED] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Plus className="w-4 h-4 text-[#400404] group-hover:text-[#FFFBED] transition-colors" />
+                <Plus className="w-4 h-4 text-[#400404] group-hover:text-[#FFFBED] transition-colors shrink-0" />
                 <span>Adicionar Link</span>
               </button>
             </div>
@@ -824,27 +1099,20 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             <DialogFooter className="pt-4 border-t border-[#400404]/15">
               <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)} className="text-xs font-medium">Cancelar</Button>
               <Button type="submit" disabled={isSaving || !title.trim()} className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs cursor-pointer">
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    <span>Criando...</span>
-                  </>
-                ) : (
-                  <span>Criar Projeto</span>
-                )}
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin shrink-0" /> : <span>Cadastrar Projeto</span>}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Modal: Editar Projeto */}
+      {/* Modal: Editar Projeto Existente */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="bg-[#FFFBED] border border-[#400404]/25 text-[#400404] max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-[#400404] tracking-tight">Editar Projeto</DialogTitle>
             <DialogDescription className="text-xs text-[#5C1212]/80 font-normal">
-              Atualize as informações, links e parâmetros de ingestão do projeto.
+              Atualize as informações, status, atribuições de editores e links deste projeto.
             </DialogDescription>
           </DialogHeader>
 
@@ -865,6 +1133,123 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 required
                 className="bg-white text-xs font-normal text-[#400404] border-[#400404]/20"
               />
+            </div>
+
+            {/* Editor Responsável (Edit Modal) */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#400404] flex items-center gap-1.5">
+                <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>Editor Responsável (Lead Editor) *</span>
+              </label>
+              <select
+                value={editLeadUserId}
+                onChange={(e) => setEditLeadUserId(e.target.value)}
+                required
+                className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:ring-2 focus:ring-[#400404]/20 focus:outline-none cursor-pointer"
+              >
+                {users.map((u) => (
+                  <option key={u.UserId} value={u.UserId}>
+                    {u.Name} ({u.Email}) — {u.Role}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Equipe do Projeto & Funções PAM (Edit Modal) */}
+            <div className="space-y-2 pt-2 border-t border-[#400404]/15">
+              <label className="text-xs font-semibold text-[#400404] flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-[#400404]/70 shrink-0" />
+                  <span>Equipe do Projeto & Especialidades (PAM)</span>
+                </span>
+                <span className="text-[10px] text-[#5C1212]/70 font-normal">
+                  {editAdditionalEditors.length} integrante(s) adicional(is)
+                </span>
+              </label>
+
+              {editAdditionalEditors.length > 0 && (
+                <div className="space-y-2 bg-white p-3 rounded-xl border border-[#400404]/15">
+                  {editAdditionalEditors.map((ed) => {
+                    const matchedUser = users.find((u) => u.UserId === ed.UserId);
+                    const roleConfig = PAM_ROLES.find((r) => r.id === ed.AssignmentRole) || PAM_ROLES[0];
+                    const RoleIcon = roleConfig.icon;
+
+                    return (
+                      <div key={ed.UserId} className="flex items-center justify-between gap-2 p-2 bg-[#FFFBED]/60 rounded-lg border border-[#400404]/10 text-xs">
+                        <div className="flex items-center gap-2 truncate">
+                          <div className="w-6 h-6 rounded-full bg-[#400404] text-[#FFFBED] text-[10px] font-semibold flex items-center justify-center shrink-0 overflow-hidden">
+                            {matchedUser?.AvatarUrl ? (
+                              <img src={matchedUser.AvatarUrl} alt={matchedUser.Name} className="w-full h-full object-cover" />
+                            ) : (
+                              matchedUser?.Name ? matchedUser.Name.charAt(0).toUpperCase() : 'U'
+                            )}
+                          </div>
+                          <div className="truncate">
+                            <span className="font-medium text-[#400404] truncate block">{matchedUser?.Name || 'Editor'}</span>
+                            <span className="text-[10px] text-[#5C1212]/70 block font-mono">{matchedUser?.Email}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${roleConfig.badgeColor}`}>
+                            <RoleIcon className="w-3 h-3 shrink-0" />
+                            <span>{roleConfig.label}</span>
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAdditionalEditor(ed.UserId, true)}
+                            className="p-1 text-red-700/80 hover:text-red-900 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                            title="Remover integrante"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+                <select
+                  value={editSelectedAddUser}
+                  onChange={(e) => setEditSelectedAddUser(e.target.value)}
+                  className="w-full sm:w-1/2 p-2 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:outline-none cursor-pointer"
+                >
+                  <option value="">Selecione um editor...</option>
+                  {users
+                    .filter((u) => u.UserId !== editLeadUserId && !editAdditionalEditors.some((ae) => ae.UserId === u.UserId))
+                    .map((u) => (
+                      <option key={u.UserId} value={u.UserId}>
+                        {u.Name} ({u.Email})
+                      </option>
+                    ))}
+                </select>
+
+                <select
+                  value={editSelectedAddRole}
+                  onChange={(e) => setEditSelectedAddRole(e.target.value as PamRoleType)}
+                  className="w-full sm:w-1/3 p-2 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:outline-none cursor-pointer"
+                >
+                  {PAM_ROLES.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleAddAdditionalEditor(true)}
+                  disabled={!editSelectedAddUser}
+                  className="w-full sm:w-auto text-xs font-medium py-2 px-3 border-[#400404]/25 text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] shrink-0 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <span>Adicionar</span>
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
