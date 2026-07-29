@@ -53,7 +53,8 @@ public class AuthController(WorkstationDbContext context, JwtTokenService tokenS
             UserId = user.UserId,
             Name = user.Name,
             Email = user.Email,
-            Role = user.Role
+            Role = user.Role,
+            AvatarUrl = user.AvatarUrl
         });
     }
 
@@ -83,6 +84,7 @@ public class AuthController(WorkstationDbContext context, JwtTokenService tokenS
             Name = user.Name,
             Email = user.Email,
             Role = user.Role,
+            AvatarUrl = user.AvatarUrl,
             CreatedAt = user.CreatedAt
         });
     }
