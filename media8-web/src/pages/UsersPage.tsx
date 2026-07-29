@@ -356,12 +356,6 @@ export const UsersPage: React.FC<UsersPageProps> = ({
 
       {/* Users Table */}
       <div className="bg-white rounded-xl border border-[#400404]/15 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-[#400404]/10 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#400404] tracking-tight">Equipe da Produtora</h3>
-          <span className="text-xs font-mono font-medium text-[#5C1212]/80">
-            {stats ? stats.TotalUsers : users.length} usuários cadastrados
-          </span>
-        </div>
 
         {isLoading ? (
           <div className="p-12 text-center text-xs text-[#5C1212]/80 flex flex-col items-center justify-center gap-2 font-normal">

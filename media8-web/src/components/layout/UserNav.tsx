@@ -29,8 +29,21 @@ interface UserNavProps {
 
 export const UserNav: React.FC<UserNavProps> = ({ currentUser, onLogout, className }) => {
   const navigate = useNavigate();
+  const [imgFailed, setImgFailed] = React.useState(false);
 
   if (!currentUser) return null;
+
+  const getAvatarSrc = (url?: string) => {
+    if (!url || !url.trim()) return undefined;
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+      return url;
+    }
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+    const serverHost = apiBase.replace(/\/api\/v1\/?$/, '');
+    return `${serverHost}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  const avatarSrc = !imgFailed ? getAvatarSrc(currentUser.AvatarUrl) : undefined;
 
   const initials = currentUser.Name
     ? currentUser.Name.split(' ')
@@ -49,11 +62,12 @@ export const UserNav: React.FC<UserNavProps> = ({ currentUser, onLogout, classNa
           aria-label="Menu do usuário"
         >
           <div className="w-9 h-9 rounded-full bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center overflow-hidden border-2 border-[#400404]/30 hover:border-[#400404] shadow-xs transition-all">
-            {currentUser.AvatarUrl ? (
+            {avatarSrc ? (
               <img
-                src={currentUser.AvatarUrl}
+                src={avatarSrc}
                 alt={currentUser.Name}
                 className="w-full h-full object-cover"
+                onError={() => setImgFailed(true)}
               />
             ) : (
               <span>{initials}</span>
@@ -71,11 +85,12 @@ export const UserNav: React.FC<UserNavProps> = ({ currentUser, onLogout, classNa
         <DropdownMenuLabel className="font-normal p-3 bg-[#400404]/5 rounded-xl border border-[#400404]/10 mb-1">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#400404] text-[#FFFBED] font-semibold text-sm flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
-              {currentUser.AvatarUrl ? (
+              {avatarSrc ? (
                 <img
-                  src={currentUser.AvatarUrl}
+                  src={avatarSrc}
                   alt={currentUser.Name}
                   className="w-full h-full object-cover"
+                  onError={() => setImgFailed(true)}
                 />
               ) : (
                 <span>{initials}</span>

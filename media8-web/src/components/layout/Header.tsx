@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
   const { breadcrumbs, title } = getRouteInfo(location.pathname);
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FFFBED]/95 backdrop-blur-md border-b border-[#400404]/15 px-6 py-3 flex items-center justify-between shadow-xs transition-all">
+    <header className="sticky top-0 z-40 bg-[#FFFBED]/95 backdrop-blur-md border-b border-[#400404]/15 px-6 py-3.5 min-h-[64px] flex items-center justify-between shadow-xs transition-all">
       {/* Left: Dynamic Breadcrumb & Page Title */}
       <div>
         <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-[11px] text-[#5C1212]/70 font-medium">
