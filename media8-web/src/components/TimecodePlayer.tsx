@@ -2,6 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Play, Pause, Flag, ChevronLeft, ChevronRight, FastForward, Rewind } from 'lucide-react';
 import type { WorkstationAsset } from '../types';
 
+import { AuthService } from '../services/api';
+
 interface TimecodePlayerProps {
   asset?: WorkstationAsset;
   onSetInPoint?: (timecode: string, frame: number) => void;
@@ -118,7 +120,7 @@ export const TimecodePlayer: React.FC<TimecodePlayerProps> = ({ asset, onSetInPo
       <div className="relative aspect-video bg-[#000000] flex items-center justify-center group overflow-hidden">
         <video
           ref={videoRef}
-          src={asset.StoragePathProxy}
+          src={AuthService.getProtectedMediaUrl(asset.StoragePathProxy)}
           onTimeUpdate={handleTimeUpdate}
           onEnded={() => setIsPlaying(false)}
           className="w-full h-full object-contain"

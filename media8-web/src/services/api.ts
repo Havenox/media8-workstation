@@ -19,6 +19,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BA
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -64,6 +65,31 @@ export const AuthService = {
   logout: (): void => {
     localStorage.removeItem('media8_token');
     localStorage.removeItem('media8_user');
+  },
+
+  getProtectedMediaUrl: (path?: string): string => {
+    if (!path || !path.trim()) return '';
+    if (path.startsWith('data:')) return path;
+
+    let relative = path;
+    if (relative.startsWith('http://') || relative.startsWith('https://')) {
+      try {
+        const parsed = new URL(relative);
+        relative = parsed.pathname;
+      } catch {
+        // keep as is
+      }
+    }
+
+    if (relative.startsWith('/storage/')) {
+      relative = relative.replace('/storage/', '');
+    } else if (relative.startsWith('/api/v1/Storage/')) {
+      relative = relative.replace('/api/v1/Storage/', '');
+    } else if (relative.startsWith('/')) {
+      relative = relative.substring(1);
+    }
+
+    return `/api/v1/Storage/${relative}`;
   },
 };
 

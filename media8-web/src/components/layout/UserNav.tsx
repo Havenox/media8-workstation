@@ -21,6 +21,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+import { AuthService } from '../../services/api';
+
 interface UserNavProps {
   currentUser: User;
   onLogout: () => void;
@@ -33,17 +35,7 @@ export const UserNav: React.FC<UserNavProps> = ({ currentUser, onLogout, classNa
 
   if (!currentUser) return null;
 
-  const getAvatarSrc = (url?: string) => {
-    if (!url || !url.trim()) return undefined;
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-      return url;
-    }
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
-    const serverHost = apiBase.replace(/\/api\/v1\/?$/, '');
-    return `${serverHost}${url.startsWith('/') ? '' : '/'}${url}`;
-  };
-
-  const avatarSrc = !imgFailed ? getAvatarSrc(currentUser.AvatarUrl) : undefined;
+  const avatarSrc = !imgFailed && currentUser.AvatarUrl ? AuthService.getProtectedMediaUrl(currentUser.AvatarUrl) : undefined;
 
   const initials = currentUser.Name
     ? currentUser.Name.split(' ')

@@ -392,7 +392,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
                         {/* Avatar Image or Initials Box */}
                         <div className="w-9 h-9 rounded-xl bg-[#400404] text-[#FFFBED] font-semibold text-xs flex items-center justify-center shadow-xs overflow-hidden shrink-0 border border-[#400404]/20">
                           {u.AvatarUrl ? (
-                            <img src={u.AvatarUrl} alt={u.Name} className="w-full h-full object-cover" />
+                            <img src={AuthService.getProtectedMediaUrl(u.AvatarUrl)} alt={u.Name} className="w-full h-full object-cover" />
                           ) : (
                             u.Name ? u.Name.charAt(0).toUpperCase() : 'U'
                           )}
