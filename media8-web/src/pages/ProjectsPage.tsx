@@ -33,6 +33,7 @@ import { format, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Project, ProjectLink, User } from '../types';
 import { ProjectService } from '../services/api';
+import { ProtectedImage } from '../components/ui/ProtectedImage';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Calendar } from '../components/ui/calendar';
@@ -755,7 +756,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                                   }`}
                                 >
                                   {userAvatar ? (
-                                    <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
+                                    <ProtectedImage src={userAvatar} alt={userName} className="w-full h-full object-cover" />
                                   ) : (
                                     firstLetter
                                   )}
@@ -792,7 +793,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                                 <div key={ed.ProjectEditorId || ed.UserId} className="flex items-center justify-between gap-2 text-xs">
                                   <div className="flex items-center gap-2 truncate">
                                     <div className={`w-7 h-7 rounded-full bg-[#400404] text-[#FFFBED] font-semibold text-[10px] flex items-center justify-center shrink-0 overflow-hidden ${isLead ? 'ring-2 ring-amber-400' : ''}`}>
-                                      {userAvatar ? <img src={userAvatar} alt={userName} className="w-full h-full object-cover" /> : userName.charAt(0).toUpperCase()}
+                                      {userAvatar ? <ProtectedImage src={userAvatar} alt={userName} className="w-full h-full object-cover" /> : userName.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="truncate">
                                       <p className="font-medium text-[#400404] truncate flex items-center gap-1">
@@ -951,7 +952,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                               <div className="flex items-center gap-2 truncate">
                                 <div className="w-6 h-6 rounded-full bg-[#400404] text-[#FFFBED] text-[10px] font-semibold flex items-center justify-center shrink-0 overflow-hidden">
                                   {matchedUser?.AvatarUrl ? (
-                                    <img src={matchedUser.AvatarUrl} alt={matchedUser.Name} className="w-full h-full object-cover" />
+                                    <ProtectedImage src={matchedUser.AvatarUrl} alt={matchedUser.Name} className="w-full h-full object-cover" />
                                   ) : (
                                     matchedUser?.Name ? matchedUser.Name.charAt(0).toUpperCase() : 'U'
                                   )}
@@ -1282,7 +1283,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                               <div className="flex items-center gap-2 truncate">
                                 <div className="w-6 h-6 rounded-full bg-[#400404] text-[#FFFBED] text-[10px] font-semibold flex items-center justify-center shrink-0 overflow-hidden">
                                   {matchedUser?.AvatarUrl ? (
-                                    <img src={matchedUser.AvatarUrl} alt={matchedUser.Name} className="w-full h-full object-cover" />
+                                    <ProtectedImage src={matchedUser.AvatarUrl} alt={matchedUser.Name} className="w-full h-full object-cover" />
                                   ) : (
                                     matchedUser?.Name ? matchedUser.Name.charAt(0).toUpperCase() : 'U'
                                   )}
