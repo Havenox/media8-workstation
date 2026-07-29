@@ -67,3 +67,14 @@ Ao realizar o login ou atualizar a aplicação, o componente de topo `UserNav` r
 - **Vite Production Build**: 0 erros de compilação (8.10s).
 - **Docker Compose**: 4/4 containers recompilados e operando de forma saudável.
 - **Experiência Visual**: Foto do usuário Eduardo Oliveira é renderizada com nitidez no canto superior direito e dentro do menu dropdown. Cabeçalho e sininho estão 100% idênticos ao app CRM.
+
+---
+
+## 5. Arquitetura de Segurança de Mídias (`StorageController` + Cookies HttpOnly)
+
+### Acesso Protegido a Mídias Privadas
+1. **Desativação Total do Acesso Público**: O middleware `UseStaticFiles('/storage')` e a localização `/storage/` do Nginx foram permanentemente desativados.
+2. **Controlador Protegido `StorageController`**: Anotado com `[Authorize]`, exige token JWT via Cookie de segurança (`media8_auth`).
+3. **Absoluto Banimento de Tokens em URLs**: Mídias são servidas via URLs limpas (`/api/v1/Storage/avatars/xxx.webp`). Nenhum token JWT é exposto em parâmetros de query (`?token=...`).
+4. **Renovação Automática de Cookie (`GET /Auth/me`)**: Ao carregar a aplicação, a API renova a Cookie de segurança `media8_auth` (`HttpOnly`, `SameSite=Lax`, `Path=/`), permitindo que a tag `<img src="...">` envie a cookie nativamente.
+5. **Bloqueio em Aba Anônima**: Tentativas de acesso externo direto retornam estritamente **HTTP 401 Unauthorized**.
