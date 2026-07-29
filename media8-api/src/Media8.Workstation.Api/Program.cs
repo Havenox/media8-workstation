@@ -48,6 +48,18 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey))
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            if (string.IsNullOrEmpty(context.Token) && context.Request.Cookies.ContainsKey("media8_auth"))
+            {
+                context.Token = context.Request.Cookies["media8_auth"];
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // 5. Smart Database Connection String Resolution
@@ -138,12 +150,6 @@ if (!Directory.Exists(storagePath))
 {
     Directory.CreateDirectory(storagePath);
 }
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(storagePath),
-    RequestPath = "/storage"
-});
 
 app.UseAuthentication();
 app.UseAuthorization();

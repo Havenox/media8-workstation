@@ -47,6 +47,14 @@ public class AuthController(WorkstationDbContext context, JwtTokenService tokenS
 
         var token = tokenService.GenerateToken(user);
 
+        Response?.Cookies?.Append("media8_auth", token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = false, // Set to false in dev or true in production behind HTTPS
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddDays(7)
+        });
+
         return Ok(new AuthResponse
         {
             Token = token,
