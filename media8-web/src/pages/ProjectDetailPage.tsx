@@ -106,13 +106,47 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = () => {
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'Completed':
-        return <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">Concluído</span>;
+        return (
+          <span className="bg-sky-50 text-sky-900 border border-sky-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0 mr-1.5" />
+            Concluído
+          </span>
+        );
       case 'InReview':
-        return <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">Em Revisão</span>;
+        return (
+          <span className="bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mr-1.5" />
+            Em Revisão
+          </span>
+        );
       case 'InProduction':
-        return <span className="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">Em Produção</span>;
+        return (
+          <span className="bg-emerald-50 text-emerald-900 border border-emerald-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0 mr-1.5" />
+            Em Produção
+          </span>
+        );
+      case 'Cancelled':
+        return (
+          <span className="bg-red-50 text-red-900 border border-red-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 mr-1.5" />
+            Cancelado
+          </span>
+        );
+      case 'Archived':
+        return (
+          <span className="bg-stone-100 text-stone-800 border border-stone-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 mr-1.5" />
+            Arquivado
+          </span>
+        );
       default:
-        return <span className="bg-[#400404]/10 text-[#400404] border border-[#400404]/20 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">Rascunho</span>;
+        return (
+          <span className="bg-slate-100 text-slate-800 border border-slate-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0 mr-1.5" />
+            Rascunho
+          </span>
+        );
     }
   };
 
@@ -158,7 +192,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = () => {
     if (mediaFilter === 'VIDEO') return mime.startsWith('video/') || ['mp4', 'mov', 'mkv', 'avi'].includes(ext);
     if (mediaFilter === 'IMAGE') return mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
     if (mediaFilter === 'AUDIO') return mime.startsWith('audio/') || ['mp3', 'wav', 'aac', 'flac'].includes(ext);
-    if (mediaFilter === 'DOC') return ['pdf', 'doc', 'docx', 'txt', 'md', 'json'].includes(ext) || mime.contains('pdf') || mime.startsWith('text/');
+    if (mediaFilter === 'DOC') return ['pdf', 'doc', 'docx', 'txt', 'md', 'json'].includes(ext) || mime.includes('pdf') || mime.startsWith('text/');
     return true;
   });
 

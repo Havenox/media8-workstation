@@ -563,48 +563,55 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
     }
   };
 
-  // Subtle Minimalist Status Badges
+  // Subtle Minimalist Status Badges with Indicator Dots
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Draft':
         return (
-          <span className="text-[11px] font-medium text-gray-700 bg-gray-100 border border-gray-300 px-2 py-0.5 rounded-full">
+          <span className="text-[11px] font-medium text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0 mr-1.5" />
             Rascunho
           </span>
         );
       case 'InProduction':
         return (
-          <span className="text-[11px] font-medium text-amber-900 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-[11px] font-semibold text-emerald-900 bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0 mr-1.5" />
             Em Produção
           </span>
         );
       case 'InReview':
         return (
-          <span className="text-[11px] font-medium text-blue-900 bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-[11px] font-semibold text-amber-900 bg-amber-50 border border-amber-300 px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mr-1.5" />
             Em Revisão
           </span>
         );
       case 'Completed':
         return (
-          <span className="text-[11px] font-medium text-emerald-900 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-[11px] font-semibold text-sky-900 bg-sky-50 border border-sky-300 px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0 mr-1.5" />
             Concluído
           </span>
         );
       case 'Cancelled':
         return (
-          <span className="text-[11px] font-medium text-red-900 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">
+          <span className="text-[11px] font-semibold text-red-900 bg-red-50 border border-red-300 px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 mr-1.5" />
             Cancelado
           </span>
         );
       case 'Archived':
         return (
-          <span className="text-[11px] font-medium text-stone-700 bg-stone-100 border border-stone-300 px-2 py-0.5 rounded-full">
+          <span className="text-[11px] font-medium text-stone-700 bg-stone-100 border border-stone-300 px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 mr-1.5" />
             Arquivado
           </span>
         );
       default:
         return (
-          <span className="text-[11px] font-medium text-[#400404] bg-[#400404]/5 border border-[#400404]/15 px-2 py-0.5 rounded-full">
+          <span className="text-[11px] font-medium text-[#400404] bg-[#400404]/5 border border-[#400404]/15 px-2.5 py-0.5 rounded-full inline-flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#400404] shrink-0 mr-1.5" />
             {status === 'Archived' ? 'Arquivado' : status}
           </span>
         );
