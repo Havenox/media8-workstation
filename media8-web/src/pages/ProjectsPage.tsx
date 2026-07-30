@@ -1569,34 +1569,34 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
         onClose={() => setArchiveTargetProject(null)}
         onConfirm={handleArchiveConfirm}
         title="Arquivar Projeto"
-        description={`Deseja arquivar o projeto '${archiveTargetProject?.Title}'? As mídias físicas no disco serão purgadas para otimizar espaço, mas todos os metadados continuarão salvos e o projeto poderá ser restaurado a qualquer momento.`}
+        description={`Tem certeza que deseja arquivar o projeto "${archiveTargetProject?.Title}"? Ele não será mais visível na lista ativa.`}
         confirmText="Arquivar Projeto"
         variant="archive"
         isLoading={isActionLoading}
       />
 
-      {/* Modal de Confirmação de Restauração */}
+      {/* Modal de Confirmação de Reativação */}
       <ConfirmModal
         isOpen={!!restoreTargetProject}
         onClose={() => setRestoreTargetProject(null)}
         onConfirm={handleRestoreConfirm}
-        title="Restaurar Projeto"
-        description={`Deseja restaurar o projeto '${restoreTargetProject?.Title}' para Em Produção?`}
-        confirmText="Restaurar Projeto"
+        title="Reativar Projeto"
+        description={`Tem certeza que deseja reativar o projeto "${restoreTargetProject?.Title}"? Ele voltará a ser visível na lista ativa.`}
+        confirmText="Reativar"
         variant="restore"
         isLoading={isActionLoading}
       />
 
-      {/* Modal de Exclusão Permanente (Alta Segurança com Trava de 3s) */}
+      {/* Modal de Exclusão Permanente */}
       <ConfirmModal
         isOpen={!!hardDeleteTargetProject}
         onClose={() => setHardDeleteTargetProject(null)}
         onConfirm={handleHardDeleteConfirm}
-        title="Deletar Permanentemente"
-        description={`ATENÇÃO: Esta ação excluirá PERMANENTEMENTE o projeto '${hardDeleteTargetProject?.Title}', todas as mídias físicas, tarefas e registros do banco de dados. Esta ação NÃO PODE ser desfeita.`}
+        title="Excluir Permanentemente"
+        description={`Tem certeza que deseja excluir permanentemente "${hardDeleteTargetProject?.Title}"? Esta ação é irreversível.`}
         confirmText="Excluir Permanentemente"
         variant="danger"
-        countdownSeconds={3}
+        countdownSeconds={5}
         isLoading={isActionLoading}
       />
     </div>

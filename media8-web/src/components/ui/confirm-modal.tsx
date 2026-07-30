@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Archive, Trash2, RotateCcw, ShieldAlert, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -61,66 +61,26 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   const isButtonDisabled = isLoading || timeLeft > 0;
 
-  const renderIcon = () => {
-    switch (variant) {
-      case 'danger':
-        return <ShieldAlert className="w-8 h-8 text-red-500 animate-pulse" />;
-      case 'archive':
-        return <Archive className="w-8 h-8 text-amber-500" />;
-      case 'restore':
-        return <RotateCcw className="w-8 h-8 text-emerald-500" />;
-      default:
-        return <AlertTriangle className="w-8 h-8 text-[#FFFBED]" />;
+  const getPrimaryButtonClass = () => {
+    if (variant === 'danger' || variant === 'archive') {
+      return 'bg-[#EF4444] hover:bg-[#DC2626] text-white shadow-xs';
     }
-  };
-
-  const getButtonClass = () => {
-    switch (variant) {
-      case 'danger':
-        return 'bg-red-600 hover:bg-red-700 text-white border-red-500 shadow-lg shadow-red-900/30';
-      case 'archive':
-        return 'bg-amber-600 hover:bg-amber-700 text-white border-amber-500 shadow-lg shadow-amber-900/30';
-      case 'restore':
-        return 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-lg shadow-emerald-900/30';
-      default:
-        return 'bg-[#400404] hover:bg-[#580606] text-[#FFFBED] border-[#580606]';
-    }
+    return 'bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] shadow-xs';
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isLoading && onClose()}>
-      <DialogContent className="sm:max-w-[480px] bg-[#1a0808] border-[#400404] text-[#FFFBED] shadow-2xl backdrop-blur-xl">
-        <DialogHeader className="gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-[#2a0c0c] border border-[#400404] flex items-center justify-center">
-              {renderIcon()}
-            </div>
-            <div>
-              <DialogTitle className="text-xl font-bold tracking-tight text-[#FFFBED]">
-                {title}
-              </DialogTitle>
-              {variant === 'danger' && (
-                <span className="inline-block mt-1 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-red-400 bg-red-950/60 border border-red-800/60 rounded-md">
-                  ⚠️ Ação Irreversível
-                </span>
-              )}
-            </div>
-          </div>
-          <DialogDescription className="text-sm text-[#FFFBED]/70 leading-relaxed pt-2">
+      <DialogContent className="sm:max-w-[440px] bg-[#FFFBED] border border-[#400404]/20 text-[#400404] shadow-2xl rounded-2xl p-6">
+        <DialogHeader className="gap-1.5 text-left">
+          <DialogTitle className="text-base font-bold text-[#400404] tracking-tight">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-[#400404]/80 leading-relaxed font-normal pt-0.5">
             {description}
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-[#300505]">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isLoading}
-            className="border-[#400404] text-[#FFFBED]/80 hover:bg-[#2a0c0c] hover:text-[#FFFBED]"
-          >
-            {cancelText}
-          </Button>
+        <DialogFooter className="gap-2 sm:gap-3 pt-5 flex flex-row items-center justify-center">
           <Button
             type="button"
             onClick={async () => {
@@ -128,17 +88,27 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
               await onConfirm();
             }}
             disabled={isButtonDisabled}
-            className={`${getButtonClass()} transition-all duration-200 min-w-[140px]`}
+            className={`${getPrimaryButtonClass()} font-medium rounded-xl px-5 py-2 text-xs transition-all min-w-[130px] border-none cursor-pointer`}
           >
             {isLoading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> Processando...
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processando...
               </span>
             ) : timeLeft > 0 ? (
-              `Aguarde (${timeLeft}s)...`
+              `Iniciar Exclusão (${timeLeft}s)`
             ) : (
               confirmText
             )}
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isLoading}
+            className="border border-[#400404]/30 bg-transparent text-[#400404] hover:bg-[#400404]/5 font-medium rounded-xl px-5 py-2 text-xs cursor-pointer"
+          >
+            {cancelText}
           </Button>
         </DialogFooter>
       </DialogContent>
