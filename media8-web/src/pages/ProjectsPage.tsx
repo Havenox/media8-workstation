@@ -1612,7 +1612,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
         description={`Tem certeza que deseja excluir permanentemente "${hardDeleteTargetProject?.Title}"? Esta ação é irreversível.`}
         confirmText="Excluir Permanentemente"
         variant="danger"
-        countdownSeconds={5}
+        countdownSeconds={3}
         isLoading={isActionLoading}
       />
     </div>
