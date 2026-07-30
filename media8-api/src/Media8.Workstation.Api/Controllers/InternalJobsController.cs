@@ -55,6 +55,7 @@ public class InternalJobsController(
 
     public record CompleteTranscodeRequest(
         Guid AssetId,
+        string? HighFidelityPath,
         string? ProxyPath,
         string? WaveformJsonPath,
         double DurationSeconds,
@@ -287,6 +288,7 @@ public class InternalJobsController(
         var asset = await dbContext.WorkstationAssets.FirstOrDefaultAsync(a => a.AssetId == req.AssetId, cancellationToken);
         if (asset != null)
         {
+            if (!string.IsNullOrEmpty(req.HighFidelityPath)) asset.StoragePathHighFidelity = req.HighFidelityPath;
             asset.StoragePathProxy = req.ProxyPath;
             asset.WaveformJsonPath = req.WaveformJsonPath;
             asset.DurationSeconds = req.DurationSeconds;

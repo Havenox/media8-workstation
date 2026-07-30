@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
+using UglyToad.PdfPig;
 
 namespace Media8.Workstation.Worker.Transcoder.Services;
 
@@ -34,27 +35,44 @@ public class DocumentTextExtractorService(ILogger<DocumentTextExtractorService> 
             sb.AppendLine("---");
             sb.AppendLine();
 
-            if (ext == ".txt" || ext == ".md" || ext == ".json" || ext == ".csv" || ext == ".xml")
+            if (ext == ".pdf")
+            {
+                logger.LogInformation("[DocumentTextExtractorService] Extraindo texto de PDF via PdfPig: {FileName}...", fileName);
+                using var document = PdfDocument.Open(rawFilePath);
+
+                foreach (var page in document.GetPages())
+                {
+                    var pageText = page.Text;
+                    if (!string.IsNullOrWhiteSpace(pageText))
+                    {
+                        sb.AppendLine($"## Página {page.Number}");
+                        sb.AppendLine();
+                        sb.AppendLine(pageText.Trim());
+                        sb.AppendLine();
+                    }
+                }
+            }
+            else if (ext == ".txt" || ext == ".md" || ext == ".json" || ext == ".csv" || ext == ".xml")
             {
                 var rawText = await File.ReadAllTextAsync(rawFilePath, cancellationToken);
                 sb.AppendLine(rawText);
             }
             else
             {
-                // Fallback / Extração genérica para outros tipos de documentos
-                sb.AppendLine($"*(Conteúdo extraído do arquivo {fileName})*");
+                sb.AppendLine($"*(Extração genérica do arquivo {fileName})*");
                 sb.AppendLine();
-                sb.AppendLine("```text");
                 var lines = await File.ReadAllLinesAsync(rawFilePath, cancellationToken);
-                foreach (var line in lines.Take(1000))
+                foreach (var line in lines.Take(500))
                 {
-                    sb.AppendLine(line);
+                    if (!string.IsNullOrWhiteSpace(line))
+                    {
+                        sb.AppendLine(line);
+                    }
                 }
-                sb.AppendLine("```");
             }
 
             await File.WriteAllTextAsync(targetMarkdownPath, sb.ToString(), cancellationToken);
-            logger.LogInformation("[DocumentTextExtractorService] ✓ Documento extraído para Markdown -> {Path}", targetMarkdownPath);
+            logger.LogInformation("[DocumentTextExtractorService] ✓ Documento extraído com sucesso para Markdown -> {Path}", targetMarkdownPath);
             return targetMarkdownPath;
         }
         catch (Exception ex)

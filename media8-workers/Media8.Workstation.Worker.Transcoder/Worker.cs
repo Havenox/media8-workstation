@@ -59,6 +59,7 @@ public class Worker(
         {
             var req = new CompleteTranscodeRequest(
                 job.AssetId,
+                pipelineResult.HighFidelityPath,
                 pipelineResult.ProxyPath,
                 pipelineResult.WaveformJsonPath,
                 pipelineResult.Metadata.DurationSeconds,

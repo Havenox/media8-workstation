@@ -19,14 +19,14 @@ public class WaveformExtractorService(ILogger<WaveformExtractorService> logger)
 {
     public async Task<string?> ExtractWaveformAsync(
         Guid assetId,
-        string rawFilePath,
+        string sourceAudioOrVideoProxyPath,
         string targetJsonPath,
         double durationSeconds,
         CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(rawFilePath))
+        if (!File.Exists(sourceAudioOrVideoProxyPath))
         {
-            logger.LogWarning("[WaveformExtractorService] Arquivo bruto não encontrado: {RawFilePath}", rawFilePath);
+            logger.LogWarning("[WaveformExtractorService] Arquivo fonte proxy não encontrado: {SourcePath}", sourceAudioOrVideoProxyPath);
             return null;
         }
 
@@ -38,11 +38,11 @@ public class WaveformExtractorService(ILogger<WaveformExtractorService> logger)
 
         try
         {
-            logger.LogInformation("[WaveformExtractorService] Extraindo waveform (20 pps, escala 0..100) para Asset {AssetId}...", assetId);
+            logger.LogInformation("[WaveformExtractorService] Extraindo waveform (20 pps, escala 0..100) do Proxy para Asset {AssetId}...", assetId);
 
             using var process = new Process();
             process.StartInfo.FileName = "ffmpeg";
-            process.StartInfo.Arguments = $"-y -i \"{rawFilePath}\" -f s16le -ac 1 -ar 8000 -";
+            process.StartInfo.Arguments = $"-y -i \"{sourceAudioOrVideoProxyPath}\" -f s16le -ac 1 -ar 8000 -";
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.CreateNoWindow = true;
@@ -74,7 +74,6 @@ public class WaveformExtractorService(ILogger<WaveformExtractorService> logger)
                     }
                 }
 
-                // Normaliza o pico em relação ao limite de 16-bit (32768) na escala de 0 a 100
                 int normalized = (int)Math.Round((maxVal / 32768.0) * 100.0);
                 points.Add(normalized);
             }
@@ -86,7 +85,6 @@ public class WaveformExtractorService(ILogger<WaveformExtractorService> logger)
             {
                 maxPeak = points.Max();
 
-                // Ganho dinâmico: se o áudio não for silencioso e o pico máximo for menor que 100%, escala proporcionalmente
                 if (maxPeak > 0 && maxPeak < 100)
                 {
                     double scale = 100.0 / maxPeak;
@@ -113,8 +111,8 @@ public class WaveformExtractorService(ILogger<WaveformExtractorService> logger)
 
             await File.WriteAllTextAsync(targetJsonPath, jsonContent, cancellationToken);
 
-            logger.LogInformation("[WaveformExtractorService] ✓ Waveform gerada com sucesso para Asset {AssetId} ({TotalPoints} pontos a 20 pps) -> {Path}",
-                assetId, points.Count, targetJsonPath);
+            logger.LogInformation("[WaveformExtractorService] ✓ Waveform gerada a partir do Proxy ({TotalPoints} pontos a 20 pps) -> {Path}",
+                points.Count, targetJsonPath);
 
             return targetJsonPath;
         }

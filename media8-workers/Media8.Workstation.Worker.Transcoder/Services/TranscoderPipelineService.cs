@@ -8,6 +8,7 @@ namespace Media8.Workstation.Worker.Transcoder.Services;
 public class TranscoderPipelineResult
 {
     public bool Success { get; set; }
+    public string? HighFidelityPath { get; set; }
     public string? ProxyPath { get; set; }
     public string? WaveformJsonPath { get; set; }
     public FFprobeMetadataResult Metadata { get; set; } = new();
@@ -37,42 +38,58 @@ public class TranscoderPipelineService(
 
         var storageBaseDir = configuration["STORAGE_PATH"]
             ?? (Directory.Exists("/storage") ? "/storage" : Path.Combine(Directory.GetCurrentDirectory(), "storage"));
-        
-        var proxyDir = Path.Combine(storageBaseDir, "proxy", asset.ProjectId.ToString());
-        if (!Directory.Exists(proxyDir))
-        {
-            Directory.CreateDirectory(proxyDir);
-        }
+
+        var projectIdStr = asset.ProjectId.ToString();
+        var hfDir = Path.Combine(storageBaseDir, "high-fidelity", projectIdStr);
+        var proxiesDir = Path.Combine(storageBaseDir, "proxies", projectIdStr);
+        var waveformsDir = Path.Combine(storageBaseDir, "waveforms", projectIdStr);
+
+        Directory.CreateDirectory(hfDir);
+        Directory.CreateDirectory(proxiesDir);
+        Directory.CreateDirectory(waveformsDir);
 
         var mimeType = asset.MimeType.ToLowerInvariant();
-        var fileName = Path.GetFileNameWithoutExtension(rawFilePath);
+        var ext = Path.GetExtension(rawFilePath).ToLowerInvariant();
 
         try
         {
-            // 1. Extração de Metadados via FFprobe
+            // 1. Extração de Metadados Técnicos via FFprobe
             result.Metadata = await ffprobeService.ExtractMetadataAsync(rawFilePath, cancellationToken);
 
             if (mimeType.StartsWith("video/"))
             {
-                logger.LogInformation("[TranscoderPipelineService] Processando Vídeo Proxy para Asset {AssetId}...", asset.AssetId);
+                logger.LogInformation("[TranscoderPipelineService] Processando Vídeo (High-Fidelity + Proxy + Waveform) para Asset {AssetId}...", asset.AssetId);
 
-                var proxyMp4Path = Path.Combine(proxyDir, $"{asset.AssetId}_proxy.mp4");
-                var posterWebpPath = Path.Combine(proxyDir, $"{asset.AssetId}_poster.webp");
-                var waveformJsonPath = Path.Combine(proxyDir, $"{asset.AssetId}_waveform.json");
+                var hfMp4Path = Path.Combine(hfDir, $"{asset.AssetId}_hf.mp4");
+                var proxyMp4Path = Path.Combine(proxiesDir, $"{asset.AssetId}_proxy.mp4");
+                var posterWebpPath = Path.Combine(proxiesDir, $"{asset.AssetId}_poster.webp");
+                var waveformJsonPath = Path.Combine(waveformsDir, $"{asset.AssetId}_waveform.json");
 
-                // Geração de Vídeo Proxy MP4 H.264 720p com +faststart
-                using var videoProcess = new Process();
-                videoProcess.StartInfo.FileName = "ffmpeg";
-                videoProcess.StartInfo.Arguments = $"-y -i \"{rawFilePath}\" -vf \"scale='min(1280,iw)':-2\" -c:v libx264 -preset fast -crf 26 -pix_fmt yuv420p -movflags +faststart -c:a aac -b:a 128k \"{proxyMp4Path}\"";
-                videoProcess.StartInfo.UseShellExecute = false;
-                videoProcess.StartInfo.CreateNoWindow = true;
+                // Etapa 1: Geração do High-Fidelity Master (CRF 18 ~ alta qualidade mantendo resolução nativa)
+                using var hfProcess = new Process();
+                hfProcess.StartInfo.FileName = "ffmpeg";
+                hfProcess.StartInfo.Arguments = $"-y -i \"{rawFilePath}\" -c:v libx264 -preset medium -crf 18 -c:a aac -b:a 256k \"{hfMp4Path}\"";
+                hfProcess.StartInfo.UseShellExecute = false;
+                hfProcess.StartInfo.CreateNoWindow = true;
 
-                videoProcess.Start();
-                await videoProcess.WaitForExitAsync(cancellationToken);
+                hfProcess.Start();
+                await hfProcess.WaitForExitAsync(cancellationToken);
+
+                result.HighFidelityPath = hfMp4Path;
+
+                // Etapa 2: Geração do Proxy Web (720p 1Mbps H.264 FastStart)
+                using var proxyProcess = new Process();
+                proxyProcess.StartInfo.FileName = "ffmpeg";
+                proxyProcess.StartInfo.Arguments = $"-y -i \"{rawFilePath}\" -vf \"scale='min(1280,iw)':-2\" -c:v libx264 -preset fast -crf 26 -pix_fmt yuv420p -movflags +faststart -c:a aac -b:a 128k \"{proxyMp4Path}\"";
+                proxyProcess.StartInfo.UseShellExecute = false;
+                proxyProcess.StartInfo.CreateNoWindow = true;
+
+                proxyProcess.Start();
+                await proxyProcess.WaitForExitAsync(cancellationToken);
 
                 result.ProxyPath = proxyMp4Path;
 
-                // Geração de Poster Thumbnail WebP no frame de 1s
+                // Poster WebP (frame 1s)
                 using var posterProcess = new Process();
                 posterProcess.StartInfo.FileName = "ffmpeg";
                 posterProcess.StartInfo.Arguments = $"-y -ss 00:00:01 -i \"{rawFilePath}\" -vframes 1 -vf \"scale='min(1280,iw)':-2\" -c:v libwebp -q:v 80 \"{posterWebpPath}\"";
@@ -82,10 +99,10 @@ public class TranscoderPipelineService(
                 posterProcess.Start();
                 await posterProcess.WaitForExitAsync(cancellationToken);
 
-                // Extração do Waveform de Áudio (20 pps, escala 0..100)
+                // Etapa 3: Waveform 20 pps a partir do PROXY LEVE
                 result.WaveformJsonPath = await waveformExtractorService.ExtractWaveformAsync(
                     asset.AssetId,
-                    rawFilePath,
+                    proxyMp4Path,
                     waveformJsonPath,
                     result.Metadata.DurationSeconds,
                     cancellationToken);
@@ -94,27 +111,40 @@ public class TranscoderPipelineService(
             }
             else if (mimeType.StartsWith("audio/"))
             {
-                logger.LogInformation("[TranscoderPipelineService] Processando Áudio Proxy para Asset {AssetId}...", asset.AssetId);
+                logger.LogInformation("[TranscoderPipelineService] Processando Áudio (High-Fidelity + Proxy + Waveform) para Asset {AssetId}...", asset.AssetId);
 
-                var proxyAacPath = Path.Combine(proxyDir, $"{asset.AssetId}_proxy.aac");
-                var waveformJsonPath = Path.Combine(proxyDir, $"{asset.AssetId}_waveform.json");
+                var hfAacPath = Path.Combine(hfDir, $"{asset.AssetId}_hf.aac");
+                var proxyAacPath = Path.Combine(proxiesDir, $"{asset.AssetId}_proxy.aac");
+                var waveformJsonPath = Path.Combine(waveformsDir, $"{asset.AssetId}_waveform.json");
 
-                // Conversão em Áudio Proxy AAC 192k
-                using var audioProcess = new Process();
-                audioProcess.StartInfo.FileName = "ffmpeg";
-                audioProcess.StartInfo.Arguments = $"-y -i \"{rawFilePath}\" -c:a aac -b:a 192k \"{proxyAacPath}\"";
-                audioProcess.StartInfo.UseShellExecute = false;
-                audioProcess.StartInfo.CreateNoWindow = true;
+                // Master High-Fidelity 320k
+                using var hfProcess = new Process();
+                hfProcess.StartInfo.FileName = "ffmpeg";
+                hfProcess.StartInfo.Arguments = $"-y -i \"{rawFilePath}\" -c:a aac -b:a 320k \"{hfAacPath}\"";
+                hfProcess.StartInfo.UseShellExecute = false;
+                hfProcess.StartInfo.CreateNoWindow = true;
 
-                audioProcess.Start();
-                await audioProcess.WaitForExitAsync(cancellationToken);
+                hfProcess.Start();
+                await hfProcess.WaitForExitAsync(cancellationToken);
+
+                result.HighFidelityPath = hfAacPath;
+
+                // Proxy AAC 128k
+                using var proxyProcess = new Process();
+                proxyProcess.StartInfo.FileName = "ffmpeg";
+                proxyProcess.StartInfo.Arguments = $"-y -i \"{rawFilePath}\" -c:a aac -b:a 128k \"{proxyAacPath}\"";
+                proxyProcess.StartInfo.UseShellExecute = false;
+                proxyProcess.StartInfo.CreateNoWindow = true;
+
+                proxyProcess.Start();
+                await proxyProcess.WaitForExitAsync(cancellationToken);
 
                 result.ProxyPath = proxyAacPath;
 
-                // Extração do Waveform de Áudio (20 pps, escala 0..100)
+                // Waveform 20 pps a partir do PROXY LEVE
                 result.WaveformJsonPath = await waveformExtractorService.ExtractWaveformAsync(
                     asset.AssetId,
-                    rawFilePath,
+                    proxyAacPath,
                     waveformJsonPath,
                     result.Metadata.DurationSeconds,
                     cancellationToken);
@@ -123,36 +153,65 @@ public class TranscoderPipelineService(
             }
             else if (mimeType.StartsWith("image/"))
             {
-                logger.LogInformation("[TranscoderPipelineService] Processando Imagem Proxy WebP para Asset {AssetId}...", asset.AssetId);
+                logger.LogInformation("[TranscoderPipelineService] Processando Imagem (High-Fidelity + Proxy) para Asset {AssetId}...", asset.AssetId);
 
-                var proxyWebpPath = Path.Combine(proxyDir, $"{asset.AssetId}_proxy.webp");
+                var hfWebpPath = Path.Combine(hfDir, $"{asset.AssetId}_hf.webp");
+                var proxyWebpPath = Path.Combine(proxiesDir, $"{asset.AssetId}_proxy.webp");
 
-                // Redimensionamento e otimização para WebP 1080p
-                using var imgProcess = new Process();
-                imgProcess.StartInfo.FileName = "ffmpeg";
-                imgProcess.StartInfo.Arguments = $"-y -i \"{rawFilePath}\" -vf \"scale='min(1920,iw)':min'(1080,ih)':force_original_aspect_ratio=decrease\" -c:v libwebp -q:v 85 \"{proxyWebpPath}\"";
-                imgProcess.StartInfo.UseShellExecute = false;
-                imgProcess.StartInfo.CreateNoWindow = true;
+                // Master High-Fidelity WebP 95%
+                using var hfProcess = new Process();
+                hfProcess.StartInfo.FileName = "ffmpeg";
+                hfProcess.StartInfo.Arguments = $"-y -i \"{rawFilePath}\" -c:v libwebp -q:v 95 \"{hfWebpPath}\"";
+                hfProcess.StartInfo.UseShellExecute = false;
+                hfProcess.StartInfo.CreateNoWindow = true;
 
-                imgProcess.Start();
-                await imgProcess.WaitForExitAsync(cancellationToken);
+                hfProcess.Start();
+                await hfProcess.WaitForExitAsync(cancellationToken);
+
+                result.HighFidelityPath = hfWebpPath;
+
+                // Proxy WebP 1080p
+                using var proxyProcess = new Process();
+                proxyProcess.StartInfo.FileName = "ffmpeg";
+                proxyProcess.StartInfo.Arguments = $"-y -i \"{rawFilePath}\" -vf \"scale='min(1920,iw)':min'(1080,ih)':force_original_aspect_ratio=decrease\" -c:v libwebp -q:v 85 \"{proxyWebpPath}\"";
+                proxyProcess.StartInfo.UseShellExecute = false;
+                proxyProcess.StartInfo.CreateNoWindow = true;
+
+                proxyProcess.Start();
+                await proxyProcess.WaitForExitAsync(cancellationToken);
 
                 result.ProxyPath = proxyWebpPath;
                 result.Success = true;
             }
             else
             {
-                logger.LogInformation("[TranscoderPipelineService] Extraindo Texto de Documento para Markdown para Asset {AssetId}...", asset.AssetId);
+                logger.LogInformation("[TranscoderPipelineService] Processando Documento para Markdown para Asset {AssetId}...", asset.AssetId);
 
-                var rawDir = Path.GetDirectoryName(rawFilePath) ?? proxyDir;
-                var markdownExtractedPath = Path.Combine(rawDir, $"{asset.AssetId}_extracted.md");
+                var hfDocPath = Path.Combine(hfDir, $"{asset.AssetId}_hf{ext}");
+                File.Copy(rawFilePath, hfDocPath, overwrite: true);
+                result.HighFidelityPath = hfDocPath;
 
+                var markdownPath = Path.Combine(proxiesDir, $"{asset.AssetId}_extracted.md");
                 result.ProxyPath = await documentTextExtractorService.ExtractDocumentToMarkdownAsync(
                     rawFilePath,
-                    markdownExtractedPath,
+                    markdownPath,
                     cancellationToken);
 
                 result.Success = true;
+            }
+
+            // Purga / Exclusão do Arquivo RAW Físico temporário após conclusão bem-sucedida!
+            if (result.Success && File.Exists(rawFilePath))
+            {
+                try
+                {
+                    File.Delete(rawFilePath);
+                    logger.LogInformation("[TranscoderPipelineService] 🗑️ Arquivo RAW temporário purgado com sucesso: {RawFilePath}", rawFilePath);
+                }
+                catch (Exception purgeEx)
+                {
+                    logger.LogWarning(purgeEx, "[TranscoderPipelineService] Falha não crítica ao purgar arquivo RAW {RawFilePath}", rawFilePath);
+                }
             }
         }
         catch (Exception ex)

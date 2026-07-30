@@ -14,6 +14,7 @@ public record NextTranscodeJobResponse(
 
 public record CompleteTranscodeRequest(
     Guid AssetId,
+    string? HighFidelityPath,
     string? ProxyPath,
     string? WaveformJsonPath,
     double DurationSeconds,
