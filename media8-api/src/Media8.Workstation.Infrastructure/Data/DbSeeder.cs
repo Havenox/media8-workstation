@@ -96,6 +96,22 @@ public static class DbSeeder
                 );
             ");
 
+            // 7. Ensure MediaProcessingJobs table allows NULL AssetId and has ProjectId column
+            await dbContext.Database.ExecuteSqlRawAsync(@"
+                ALTER TABLE ""MediaProcessingJobs"" ADD COLUMN IF NOT EXISTS ""ProjectId"" uuid NULL REFERENCES ""Projects""(""ProjectId"") ON DELETE CASCADE;
+                
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'MediaProcessingJobs' AND column_name = 'AssetId'
+                    ) THEN
+                        ALTER TABLE ""MediaProcessingJobs"" ALTER COLUMN ""AssetId"" DROP NOT NULL;
+                    END IF;
+                END $$;
+            ");
+
             Console.WriteLine("[DbSeeder] Database Schema successfully verified and updated.");
         }
         catch (Exception ex)

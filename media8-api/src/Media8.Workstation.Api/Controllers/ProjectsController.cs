@@ -437,6 +437,7 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         var job = new MediaProcessingJob
         {
             JobId = Guid.NewGuid(),
+            ProjectId = projectId,
             AssetId = null,
             JobType = "IngestDownload",
             Status = "Pending",

@@ -67,11 +67,18 @@ public class Worker : BackgroundService
 
                     var apiKey = apiKeySetting?.Value ?? string.Empty;
 
-                    // Identifica se o job está atrelado a um Asset ou a um Project
+                    // Identifica se o job está atrelado a um Project ou a um Asset
                     Guid projectId = Guid.Empty;
                     List<ProjectLink> linksToProcess = new();
 
-                    if (job.AssetId.HasValue)
+                    if (job.ProjectId.HasValue)
+                    {
+                        projectId = job.ProjectId.Value;
+                        linksToProcess = await dbContext.ProjectLinks
+                            .Where(l => l.ProjectId == projectId)
+                            .ToListAsync(stoppingToken);
+                    }
+                    else if (job.AssetId.HasValue)
                     {
                         var asset = await dbContext.WorkstationAssets
                             .AsNoTracking()
@@ -90,22 +97,6 @@ public class Worker : BackgroundService
                                     LinkType = "GoogleDrive"
                                 });
                             }
-                        }
-                    }
-
-                    if (projectId == Guid.Empty)
-                    {
-                        var projectLink = await dbContext.ProjectLinks
-                            .AsNoTracking()
-                            .OrderByDescending(l => l.CreatedAt)
-                            .FirstOrDefaultAsync(stoppingToken);
-
-                        if (projectLink != null)
-                        {
-                            projectId = projectLink.ProjectId;
-                            linksToProcess = await dbContext.ProjectLinks
-                                .Where(l => l.ProjectId == projectId)
-                                .ToListAsync(stoppingToken);
                         }
                     }
 
