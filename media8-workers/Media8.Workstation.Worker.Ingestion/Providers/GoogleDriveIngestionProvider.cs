@@ -134,14 +134,21 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
             }
             else if (IsAllowedFile(name, mimeType))
             {
+                bool isGoogleDoc = mimeType.StartsWith("application/vnd.google-apps.");
+                var finalName = isGoogleDoc && !name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ? $"{name}.pdf" : name;
+                var finalMimeType = isGoogleDoc ? "application/pdf" : mimeType;
+                var downloadUrl = isGoogleDoc
+                    ? $"https://www.googleapis.com/drive/v3/files/{id}/export?mimeType=application/pdf&key={Uri.EscapeDataString(apiKey)}"
+                    : $"https://www.googleapis.com/drive/v3/files/{id}?alt=media&key={Uri.EscapeDataString(apiKey)}";
+
                 var discovered = new DiscoveredMediaFile
                 {
                     ExternalId = id,
-                    FileName = name,
-                    MimeType = mimeType,
+                    FileName = finalName,
+                    MimeType = finalMimeType,
                     FileSizeBytes = size,
                     FileHash = md5,
-                    DownloadUrl = $"https://www.googleapis.com/drive/v3/files/{id}?alt=media&key={Uri.EscapeDataString(apiKey)}"
+                    DownloadUrl = downloadUrl
                 };
 
                 // Verifica deduplicação antes de iniciar o download
@@ -150,7 +157,7 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
                     continue;
                 }
 
-                var downloadedFilePath = await DownloadFileToDiskAsync(httpClient, discovered.DownloadUrl, targetDirectory, name, cancellationToken);
+                var downloadedFilePath = await DownloadFileToDiskAsync(httpClient, discovered.DownloadUrl, targetDirectory, finalName, cancellationToken);
                 result.DiscoveredFiles.Add(discovered);
 
                 await onFileDownloadedAsync(discovered, downloadedFilePath);
@@ -198,14 +205,21 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
             long.TryParse(sizeProp.GetString(), out size);
         }
 
+        bool isGoogleDoc = mimeType.StartsWith("application/vnd.google-apps.");
+        var finalName = isGoogleDoc && !name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ? $"{name}.pdf" : name;
+        var finalMimeType = isGoogleDoc ? "application/pdf" : mimeType;
+        var downloadUrl = isGoogleDoc
+            ? $"https://www.googleapis.com/drive/v3/files/{fileId}/export?mimeType=application/pdf&key={Uri.EscapeDataString(apiKey)}"
+            : $"https://www.googleapis.com/drive/v3/files/{fileId}?alt=media&key={Uri.EscapeDataString(apiKey)}";
+
         var discovered = new DiscoveredMediaFile
         {
             ExternalId = fileId,
-            FileName = name,
-            MimeType = mimeType,
+            FileName = finalName,
+            MimeType = finalMimeType,
             FileSizeBytes = size,
             FileHash = md5,
-            DownloadUrl = $"https://www.googleapis.com/drive/v3/files/{fileId}?alt=media&key={Uri.EscapeDataString(apiKey)}"
+            DownloadUrl = downloadUrl
         };
 
         // Verifica deduplicação antes de iniciar o download
@@ -214,7 +228,7 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
             return;
         }
 
-        var downloadedFilePath = await DownloadFileToDiskAsync(httpClient, discovered.DownloadUrl, targetDirectory, name, cancellationToken);
+        var downloadedFilePath = await DownloadFileToDiskAsync(httpClient, discovered.DownloadUrl, targetDirectory, finalName, cancellationToken);
         result.DiscoveredFiles.Add(discovered);
 
         await onFileDownloadedAsync(discovered, downloadedFilePath);
