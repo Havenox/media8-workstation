@@ -594,10 +594,16 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             Cancelado
           </span>
         );
+      case 'Archived':
+        return (
+          <span className="text-[11px] font-medium text-stone-700 bg-stone-100 border border-stone-300 px-2 py-0.5 rounded-full">
+            Arquivado
+          </span>
+        );
       default:
         return (
           <span className="text-[11px] font-medium text-[#400404] bg-[#400404]/5 border border-[#400404]/15 px-2 py-0.5 rounded-full">
-            {status}
+            {status === 'Archived' ? 'Arquivado' : status}
           </span>
         );
     }
@@ -711,56 +717,61 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {projectsList.map((proj) => (
-              <div
-                key={proj.ProjectId}
-                className="bg-white rounded-xl border border-[#400404]/15 shadow-xs hover:shadow-sm transition-all p-5 flex flex-col justify-between space-y-4"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-semibold text-base text-[#400404] truncate tracking-tight">{proj.Title}</h3>
-                    {getStatusBadge(proj.Status)}
-                  </div>
+            {projectsList.map((proj) => {
+              const isArchived = proj.IsDeleted || proj.Status === 'Archived' || filterStatus === 'Archived';
 
-                  <div className="flex flex-wrap gap-2 items-center mb-3">
-                    {proj.ExternalOrderReference && (
-                      <div className="text-[11px] font-mono font-medium text-[#400404] bg-[#400404]/5 px-2 py-0.5 rounded border border-[#400404]/15 inline-block">
-                        CRM Ref: #{proj.ExternalOrderReference}
-                      </div>
-                    )}
+              return (
+                <div
+                  key={proj.ProjectId}
+                  className="bg-white rounded-xl border border-[#400404]/15 shadow-xs hover:shadow-sm transition-all p-5 flex flex-col justify-between space-y-4"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="font-semibold text-base text-[#400404] truncate tracking-tight">{proj.Title}</h3>
+                      {getStatusBadge(isArchived ? 'Archived' : proj.Status)}
+                    </div>
 
-                    {proj.Deadline && (
-                      <div className="text-[11px] font-medium text-[#400404] bg-[#400404]/5 px-2 py-0.5 rounded border border-[#400404]/15 inline-flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-[#400404]/70 shrink-0" />
-                        <span>Prazo: {format(new Date(proj.Deadline), 'dd/MM/yyyy')}</span>
-                      </div>
-                    )}
-                  </div>
+                    <div className="flex flex-wrap gap-2 items-center mb-3">
+                      {proj.ExternalOrderReference && (
+                        <div className="text-[11px] font-mono font-medium text-[#400404] bg-[#400404]/5 px-2 py-0.5 rounded border border-[#400404]/15 inline-block">
+                          CRM Ref: #{proj.ExternalOrderReference}
+                        </div>
+                      )}
 
-                  <p className="text-xs text-[#5C1212] font-normal line-clamp-3 bg-[#FFFBED]/60 p-3 rounded-lg border border-[#400404]/10 leading-relaxed mb-3">
-                    {proj.BriefingText || 'Nenhum briefing especificado.'}
-                  </p>
+                      {proj.Deadline && (
+                        <div className="text-[11px] font-medium text-[#400404] bg-[#400404]/5 px-2 py-0.5 rounded border border-[#400404]/15 inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#400404]/70 shrink-0" />
+                          <span>Prazo: {format(new Date(proj.Deadline), 'dd/MM/yyyy')}</span>
+                        </div>
+                      )}
+                    </div>
 
-                  {proj.Links && proj.Links.length > 0 && (
-                    <div className="space-y-2 pt-1 border-t border-[#400404]/10">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-semibold text-[#400404]/80 uppercase tracking-wider">
-                          Links Anexados ({proj.Links.length})
-                        </p>
+                    <p className="text-xs text-[#5C1212] font-normal line-clamp-3 bg-[#FFFBED]/60 p-3 rounded-lg border border-[#400404]/10 leading-relaxed mb-3">
+                      {proj.BriefingText || 'Nenhum briefing especificado.'}
+                    </p>
 
-                        <button
-                          onClick={() => handleTriggerIngest(proj.ProjectId)}
-                          disabled={triggeringIngestId === proj.ProjectId}
-                          className="group inline-flex items-center gap-1.5 text-[11px] font-medium text-[#400404] bg-[#FFFBED] hover:bg-[#400404] hover:text-[#FFFBED] border border-[#400404]/20 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
-                        >
-                          {triggeringIngestId === proj.ProjectId ? (
-                            <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                          ) : (
-                            <Zap className="w-3 h-3 text-[#400404] group-hover:text-[#FFFBED] shrink-0 transition-colors" />
+                    {proj.Links && proj.Links.length > 0 && (
+                      <div className="space-y-2 pt-1 border-t border-[#400404]/10">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-semibold text-[#400404]/80 uppercase tracking-wider">
+                            Links Anexados ({proj.Links.length})
+                          </p>
+
+                          {!isArchived && (
+                            <button
+                              onClick={() => handleTriggerIngest(proj.ProjectId)}
+                              disabled={triggeringIngestId === proj.ProjectId}
+                              className="group inline-flex items-center gap-1.5 text-[11px] font-medium text-[#400404] bg-[#FFFBED] hover:bg-[#400404] hover:text-[#FFFBED] border border-[#400404]/20 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                            >
+                              {triggeringIngestId === proj.ProjectId ? (
+                                <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                              ) : (
+                                <Zap className="w-3 h-3 text-[#400404] group-hover:text-[#FFFBED] shrink-0 transition-colors" />
+                              )}
+                              <span>Iniciar Ingestão</span>
+                            </button>
                           )}
-                          <span>Iniciar Ingestão</span>
-                        </button>
-                      </div>
+                        </div>
 
                       <div className="flex flex-wrap gap-1.5">
                         {proj.Links.map((lnk, idx) => (
@@ -871,7 +882,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
                     {currentUser.Role === 'Admin' && (
                       <div className="flex items-center gap-1 ml-1">
-                        {filterStatus !== 'Archived' && !proj.IsDeleted && proj.Status !== 'Archived' ? (
+                        {!isArchived ? (
                           <>
                             <button
                               onClick={() => handleOpenEditModal(proj)}
@@ -912,17 +923,20 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                     )}
                   </div>
 
-                  <Button
-                    onClick={() => onOpenWorkstation(proj)}
-                    size="sm"
-                    className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-1.5 px-3 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>Abrir na Workstation</span>
-                  </Button>
+                  {!isArchived && (
+                    <Button
+                      onClick={() => onOpenWorkstation(proj)}
+                      size="sm"
+                      className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-1.5 px-3 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>Abrir na Workstation</span>
+                    </Button>
+                  )}
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
 
           <div ref={observerTarget} className="py-4 text-center">
