@@ -62,6 +62,8 @@ public class Worker(
                 pipelineResult.HighFidelityPath,
                 pipelineResult.ProxyPath,
                 pipelineResult.WaveformJsonPath,
+                pipelineResult.FileSizeBytesHighFidelity,
+                pipelineResult.FileSizeBytesProxy,
                 pipelineResult.Metadata.DurationSeconds,
                 pipelineResult.Metadata.Width,
                 pipelineResult.Metadata.Height,

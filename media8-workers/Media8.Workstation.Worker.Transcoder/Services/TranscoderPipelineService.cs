@@ -11,6 +11,9 @@ public class TranscoderPipelineResult
     public string? HighFidelityPath { get; set; }
     public string? ProxyPath { get; set; }
     public string? WaveformJsonPath { get; set; }
+    public long FileSizeBytesRaw { get; set; }
+    public long FileSizeBytesHighFidelity { get; set; }
+    public long FileSizeBytesProxy { get; set; }
     public FFprobeMetadataResult Metadata { get; set; } = new();
     public string? ErrorMessage { get; set; }
 }
@@ -36,6 +39,9 @@ public class TranscoderPipelineService(
             return result;
         }
 
+        // Mede tamanho do arquivo bruto (RAW) antes de qualquer conversão
+        result.FileSizeBytesRaw = new FileInfo(rawFilePath).Length;
+
         var storageBaseDir = configuration["STORAGE_PATH"]
             ?? (Directory.Exists("/storage") ? "/storage" : Path.Combine(Directory.GetCurrentDirectory(), "storage"));
 
@@ -56,7 +62,26 @@ public class TranscoderPipelineService(
             // 1. Extração de Metadados Técnicos via FFprobe
             result.Metadata = await ffprobeService.ExtractMetadataAsync(rawFilePath, cancellationToken);
 
-            if (mimeType.StartsWith("video/"))
+            bool isDocument = ext is ".pdf" or ".txt" or ".doc" or ".docx" or ".json" or ".md" or ".csv" or ".xml"
+                || mimeType.Contains("pdf") || mimeType.StartsWith("text/") || mimeType.Contains("document");
+
+            if (isDocument)
+            {
+                logger.LogInformation("[TranscoderPipelineService] Processando Documento ({Ext}) para Markdown para Asset {AssetId}...", ext, asset.AssetId);
+
+                var hfDocPath = Path.Combine(hfDir, $"{asset.AssetId}_hf{ext}");
+                File.Copy(rawFilePath, hfDocPath, overwrite: true);
+                result.HighFidelityPath = hfDocPath;
+
+                var markdownPath = Path.Combine(proxiesDir, $"{asset.AssetId}_extracted.md");
+                result.ProxyPath = await documentTextExtractorService.ExtractDocumentToMarkdownAsync(
+                    rawFilePath,
+                    markdownPath,
+                    cancellationToken);
+
+                result.Success = true;
+            }
+            else if (mimeType.StartsWith("video/") || ext is ".mp4" or ".mov" or ".mkv" or ".avi" or ".webm")
             {
                 logger.LogInformation("[TranscoderPipelineService] Processando Vídeo (High-Fidelity + Proxy + Waveform) para Asset {AssetId}...", asset.AssetId);
 
@@ -109,7 +134,7 @@ public class TranscoderPipelineService(
 
                 result.Success = true;
             }
-            else if (mimeType.StartsWith("audio/"))
+            else if (mimeType.StartsWith("audio/") || ext is ".mp3" or ".wav" or ".aac" or ".flac" or ".m4a" or ".ogg")
             {
                 logger.LogInformation("[TranscoderPipelineService] Processando Áudio (High-Fidelity + Proxy + Waveform) para Asset {AssetId}...", asset.AssetId);
 
@@ -151,7 +176,7 @@ public class TranscoderPipelineService(
 
                 result.Success = true;
             }
-            else if (mimeType.StartsWith("image/"))
+            else
             {
                 logger.LogInformation("[TranscoderPipelineService] Processando Imagem (High-Fidelity + Proxy) para Asset {AssetId}...", asset.AssetId);
 
@@ -183,21 +208,16 @@ public class TranscoderPipelineService(
                 result.ProxyPath = proxyWebpPath;
                 result.Success = true;
             }
-            else
+
+            // Calcula métricas exatas de tamanho de arquivos gerados em bytes
+            if (!string.IsNullOrEmpty(result.HighFidelityPath) && File.Exists(result.HighFidelityPath))
             {
-                logger.LogInformation("[TranscoderPipelineService] Processando Documento para Markdown para Asset {AssetId}...", asset.AssetId);
+                result.FileSizeBytesHighFidelity = new FileInfo(result.HighFidelityPath).Length;
+            }
 
-                var hfDocPath = Path.Combine(hfDir, $"{asset.AssetId}_hf{ext}");
-                File.Copy(rawFilePath, hfDocPath, overwrite: true);
-                result.HighFidelityPath = hfDocPath;
-
-                var markdownPath = Path.Combine(proxiesDir, $"{asset.AssetId}_extracted.md");
-                result.ProxyPath = await documentTextExtractorService.ExtractDocumentToMarkdownAsync(
-                    rawFilePath,
-                    markdownPath,
-                    cancellationToken);
-
-                result.Success = true;
+            if (!string.IsNullOrEmpty(result.ProxyPath) && File.Exists(result.ProxyPath))
+            {
+                result.FileSizeBytesProxy = new FileInfo(result.ProxyPath).Length;
             }
 
             // Purga / Exclusão do Arquivo RAW Físico temporário após conclusão bem-sucedida!

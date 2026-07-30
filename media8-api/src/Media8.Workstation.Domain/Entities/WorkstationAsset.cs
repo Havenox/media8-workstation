@@ -17,6 +17,9 @@ public class WorkstationAsset
     public string? StoragePathProxy { get; set; }
     public string? WaveformJsonPath { get; set; }
     public long FileSizeBytes { get; set; } = 0;
+    public long FileSizeBytesRaw { get; set; } = 0;
+    public long FileSizeBytesHighFidelity { get; set; } = 0;
+    public long FileSizeBytesProxy { get; set; } = 0;
     public string MimeType { get; set; } = "video/mp4";
     public double DurationSeconds { get; set; } = 0.0;
     public double FrameRate { get; set; } = 29.97;

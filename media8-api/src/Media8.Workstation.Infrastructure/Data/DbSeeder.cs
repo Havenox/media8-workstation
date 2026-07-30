@@ -75,6 +75,9 @@ public static class DbSeeder
                 ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""FileHash"" character varying(100) NULL;
                 ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""ProjectLinkId"" uuid NULL REFERENCES ""ProjectLinks""(""ProjectLinkId"") ON DELETE SET NULL;
                 ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""IsSourceRemoved"" boolean NOT NULL DEFAULT false;
+                ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""FileSizeBytesRaw"" bigint NOT NULL DEFAULT 0;
+                ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""FileSizeBytesHighFidelity"" bigint NOT NULL DEFAULT 0;
+                ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""FileSizeBytesProxy"" bigint NOT NULL DEFAULT 0;
                 
                 DO $$
                 BEGIN

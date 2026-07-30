@@ -58,6 +58,8 @@ public class InternalJobsController(
         string? HighFidelityPath,
         string? ProxyPath,
         string? WaveformJsonPath,
+        long FileSizeBytesHighFidelity,
+        long FileSizeBytesProxy,
         double DurationSeconds,
         int Width,
         int Height,
@@ -244,6 +246,7 @@ public class InternalJobsController(
         asset.ExternalSourceId = req.ExternalSourceId;
         asset.FileHash = req.FileHash;
         asset.FileSizeBytes = req.FileSizeBytes;
+        asset.FileSizeBytesRaw = req.FileSizeBytes;
         asset.MimeType = string.IsNullOrWhiteSpace(req.MimeType) ? "video/mp4" : req.MimeType;
 
         if (req.IsDownloaded && !string.IsNullOrEmpty(req.DownloadedFilePath))
@@ -291,6 +294,8 @@ public class InternalJobsController(
             if (!string.IsNullOrEmpty(req.HighFidelityPath)) asset.StoragePathHighFidelity = req.HighFidelityPath;
             asset.StoragePathProxy = req.ProxyPath;
             asset.WaveformJsonPath = req.WaveformJsonPath;
+            asset.FileSizeBytesHighFidelity = req.FileSizeBytesHighFidelity;
+            asset.FileSizeBytesProxy = req.FileSizeBytesProxy;
             asset.DurationSeconds = req.DurationSeconds;
             asset.Width = req.Width;
             asset.Height = req.Height;

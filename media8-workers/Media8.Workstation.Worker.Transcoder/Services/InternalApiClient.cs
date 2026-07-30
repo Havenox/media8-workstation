@@ -17,6 +17,8 @@ public record CompleteTranscodeRequest(
     string? HighFidelityPath,
     string? ProxyPath,
     string? WaveformJsonPath,
+    long FileSizeBytesHighFidelity,
+    long FileSizeBytesProxy,
     double DurationSeconds,
     int Width,
     int Height,
