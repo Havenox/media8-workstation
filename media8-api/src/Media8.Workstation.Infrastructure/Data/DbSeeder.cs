@@ -73,6 +73,8 @@ public static class DbSeeder
                 ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""ProjectId"" uuid REFERENCES ""Projects""(""ProjectId"") ON DELETE CASCADE;
                 ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""ExternalSourceId"" character varying(255) NULL;
                 ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""FileHash"" character varying(100) NULL;
+                ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""ProjectLinkId"" uuid NULL REFERENCES ""ProjectLinks""(""ProjectLinkId"") ON DELETE SET NULL;
+                ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""IsSourceRemoved"" boolean NOT NULL DEFAULT false;
                 
                 DO $$
                 BEGIN

@@ -141,6 +141,12 @@ public class Worker : BackgroundService
                         return false;
                     }
 
+                    var targetProject = await dbContext.Projects
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.ProjectId == projectId, stoppingToken);
+
+                    bool shouldDownloadNow = (targetProject?.AutoIngest == true) || job.AssetId.HasValue;
+
                     int totalIngestedFiles = 0;
 
                     foreach (var link in linksToProcess)
@@ -153,7 +159,7 @@ public class Worker : BackgroundService
                             continue;
                         }
 
-                        _logger.LogInformation("[Worker.Ingestion] Executando varredura via {ProviderName} para URL: {Url}", provider.GetType().Name, link.Url);
+                        _logger.LogInformation("[Worker.Ingestion] Executando varredura via {ProviderName} para URL: {Url} (AutoIngest: {AutoIngest})", provider.GetType().Name, link.Url, shouldDownloadNow);
 
                         var result = await provider.DiscoverAndDownloadFilesAsync(
                             link,
@@ -162,46 +168,74 @@ public class Worker : BackgroundService
                             IsAlreadyIngested,
                             async (discoveredFile, downloadedFilePath) =>
                             {
-                                // Inserção atômica de cada mídia física descoberta no banco
-                                var newAssetId = Guid.NewGuid();
-                                var newAsset = new WorkstationAsset
+                                var newAssetId = job.AssetId ?? Guid.NewGuid();
+                                var existingAsset = job.AssetId.HasValue
+                                    ? await dbContext.WorkstationAssets.FirstOrDefaultAsync(a => a.AssetId == job.AssetId.Value, stoppingToken)
+                                    : null;
+
+                                bool isNewAsset = (existingAsset == null);
+                                var newAsset = existingAsset ?? new WorkstationAsset
                                 {
                                     AssetId = newAssetId,
-                                    ProjectId = projectId,
-                                    Title = discoveredFile.FileName,
-                                    OriginalFileName = discoveredFile.FileName,
-                                    ExternalSourceUrl = link.Url,
-                                    ExternalSourceId = discoveredFile.ExternalId,
-                                    FileHash = discoveredFile.FileHash,
-                                    StoragePathHighFidelity = downloadedFilePath,
-                                    FileSizeBytes = discoveredFile.FileSizeBytes,
-                                    MimeType = string.IsNullOrWhiteSpace(discoveredFile.MimeType) ? "video/mp4" : discoveredFile.MimeType,
-                                    Status = "Ingested",
-                                    CreatedAt = DateTime.UtcNow
+                                    ProjectId = projectId
                                 };
 
-                                dbContext.WorkstationAssets.Add(newAsset);
+                                newAsset.ProjectLinkId = link.ProjectLinkId;
+                                newAsset.Title = discoveredFile.FileName;
+                                newAsset.OriginalFileName = discoveredFile.FileName;
+                                newAsset.ExternalSourceUrl = link.Url;
+                                newAsset.ExternalSourceId = discoveredFile.ExternalId;
+                                newAsset.FileHash = discoveredFile.FileHash;
+                                newAsset.FileSizeBytes = discoveredFile.FileSizeBytes;
+                                newAsset.MimeType = string.IsNullOrWhiteSpace(discoveredFile.MimeType) ? "video/mp4" : discoveredFile.MimeType;
+
+                                if (shouldDownloadNow)
+                                {
+                                    newAsset.StoragePathHighFidelity = downloadedFilePath;
+                                    newAsset.Status = "Ingested";
+                                }
+                                else
+                                {
+                                    newAsset.Status = "Discovered";
+                                }
+
+                                if (isNewAsset)
+                                {
+                                    dbContext.WorkstationAssets.Add(newAsset);
+                                }
 
                                 if (!string.IsNullOrEmpty(discoveredFile.ExternalId)) existingExternalIds.Add(discoveredFile.ExternalId);
                                 if (!string.IsNullOrEmpty(discoveredFile.FileHash)) existingHashes.Add(discoveredFile.FileHash);
 
-                                // Enfileira job de transcodificação de proxy para o Worker.Transcoder
-                                var transcodeJob = new MediaProcessingJob
+                                if (shouldDownloadNow)
                                 {
-                                    JobId = Guid.NewGuid(),
-                                    AssetId = newAssetId,
-                                    JobType = "TranscodeProxy",
-                                    Status = "Pending",
-                                    Priority = 10,
-                                    CreatedAt = DateTime.UtcNow,
-                                    UpdatedAt = DateTime.UtcNow
-                                };
+                                    // Enfileira job de transcodificação de proxy para o Worker.Transcoder
+                                    var transcodeJob = new MediaProcessingJob
+                                    {
+                                        JobId = Guid.NewGuid(),
+                                        ProjectId = projectId,
+                                        AssetId = newAssetId,
+                                        JobType = "TranscodeProxy",
+                                        Status = "Pending",
+                                        Priority = 10,
+                                        CreatedAt = DateTime.UtcNow,
+                                        UpdatedAt = DateTime.UtcNow
+                                    };
 
-                                dbContext.MediaProcessingJobs.Add(transcodeJob);
+                                    dbContext.MediaProcessingJobs.Add(transcodeJob);
+                                }
+
                                 await dbContext.SaveChangesAsync(stoppingToken);
 
                                 totalIngestedFiles++;
-                                _logger.LogInformation("[Worker.Ingestion] ✓ Mídia '{FileName}' catalogada com sucesso (AssetId: {AssetId}). Job TranscodeProxy enfileirado.", discoveredFile.FileName, newAssetId);
+                                if (shouldDownloadNow)
+                                {
+                                    _logger.LogInformation("[Worker.Ingestion] ✓ Mídia '{FileName}' baixada e catalogada (AssetId: {AssetId}). Job TranscodeProxy enfileirado.", discoveredFile.FileName, newAssetId);
+                                }
+                                else
+                                {
+                                    _logger.LogInformation("[Worker.Ingestion] 🔍 Mídia '{FileName}' descoberta e catalogada (Status: Discovered). Aguardando seleção do editor para download.", discoveredFile.FileName);
+                                }
                             },
                             stoppingToken);
 

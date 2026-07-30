@@ -65,9 +65,10 @@ public class UpdateProjectRequest
 /// Herda de WorkstationBaseController (Rota: api/v1/Projects).
 /// </summary>
 [Authorize]
-public class ProjectsController(WorkstationDbContext context) : WorkstationBaseController
+public class ProjectsController(WorkstationDbContext context, IConfiguration configuration) : WorkstationBaseController
 {
     private readonly WorkstationDbContext _context = context;
+    private readonly IConfiguration _configuration = configuration;
 
     /// <summary>
     /// Obtém os indicadores numéricos consolidados de estatísticas dos projetos (RBAC-enforced).
@@ -458,7 +459,46 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
     }
 
     /// <summary>
-    /// Remove um projeto (Suporta Soft Delete via soft=true e Hard Delete via soft=false).
+    /// Remove um link específico do projeto com opção de expurgar mídias vinculadas ou mantê-las com aviso de Origem Removida.
+    /// </summary>
+    [HttpDelete("{projectId:guid}/links/{linkId:guid}")]
+    public async Task<IActionResult> DeleteProjectLink(Guid projectId, Guid linkId, [FromQuery] bool purgeAssociatedMedia = false)
+    {
+        var link = await _context.ProjectLinks
+            .FirstOrDefaultAsync(l => l.ProjectLinkId == linkId && l.ProjectId == projectId);
+
+        if (link == null) return NotFound();
+
+        var associatedAssets = await _context.WorkstationAssets
+            .Where(a => a.ProjectId == projectId && (a.ProjectLinkId == linkId || a.ExternalSourceUrl == link.Url))
+            .ToListAsync();
+
+        if (purgeAssociatedMedia)
+        {
+            foreach (var asset in associatedAssets)
+            {
+                PurgeAssetDiskFiles(asset);
+                _context.WorkstationAssets.Remove(asset);
+            }
+        }
+        else
+        {
+            foreach (var asset in associatedAssets)
+            {
+                asset.ProjectLinkId = null;
+                asset.IsSourceRemoved = true;
+            }
+        }
+
+        _context.ProjectLinks.Remove(link);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Remove um projeto (Suporta Soft Delete / Arquivamento via soft=true e Hard Delete ACID via soft=false).
+    /// Em ambos os modos, realiza a PURGA FÍSICA de todos os arquivos brutos e proxies do disco.
     /// </summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteProject(Guid id, [FromQuery] bool soft = true)
@@ -469,14 +509,87 @@ public class ProjectsController(WorkstationDbContext context) : WorkstationBaseC
         if (soft)
         {
             project.IsDeleted = true;
+            project.Status = "Archived";
             project.UpdatedAt = DateTime.UtcNow;
+
+            var assets = await _context.WorkstationAssets.Where(a => a.ProjectId == id).ToListAsync();
+            foreach (var asset in assets)
+            {
+                PurgeAssetDiskFiles(asset);
+                asset.StoragePathHighFidelity = null;
+                asset.StoragePathProxy = null;
+                asset.WaveformJsonPath = null;
+                asset.Status = "Archived";
+            }
+
+            PurgeProjectDiskStorage(id);
+            await _context.SaveChangesAsync();
         }
         else
         {
-            _context.Projects.Remove(project);
+            using var tx = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                PurgeProjectDiskStorage(id);
+
+                var jobs = await _context.MediaProcessingJobs
+                    .Where(j => j.ProjectId == id || (j.AssetId.HasValue && _context.WorkstationAssets.Any(a => a.AssetId == j.AssetId.Value && a.ProjectId == id)))
+                    .ToListAsync();
+                _context.MediaProcessingJobs.RemoveRange(jobs);
+
+                var assets = await _context.WorkstationAssets.Where(a => a.ProjectId == id).ToListAsync();
+                _context.WorkstationAssets.RemoveRange(assets);
+
+                var links = await _context.ProjectLinks.Where(l => l.ProjectId == id).ToListAsync();
+                _context.ProjectLinks.RemoveRange(links);
+
+                var editors = await _context.ProjectEditors.Where(e => e.ProjectId == id).ToListAsync();
+                _context.ProjectEditors.RemoveRange(editors);
+
+                _context.Projects.Remove(project);
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
         }
 
-        await _context.SaveChangesAsync();
         return NoContent();
+    }
+
+    private void PurgeAssetDiskFiles(WorkstationAsset asset)
+    {
+        if (!string.IsNullOrEmpty(asset.StoragePathHighFidelity) && System.IO.File.Exists(asset.StoragePathHighFidelity))
+        {
+            try { System.IO.File.Delete(asset.StoragePathHighFidelity); } catch { }
+        }
+        if (!string.IsNullOrEmpty(asset.StoragePathProxy) && System.IO.File.Exists(asset.StoragePathProxy))
+        {
+            try { System.IO.File.Delete(asset.StoragePathProxy); } catch { }
+        }
+        if (!string.IsNullOrEmpty(asset.WaveformJsonPath) && System.IO.File.Exists(asset.WaveformJsonPath))
+        {
+            try { System.IO.File.Delete(asset.WaveformJsonPath); } catch { }
+        }
+    }
+
+    private void PurgeProjectDiskStorage(Guid projectId)
+    {
+        var storageBasePath = _configuration["STORAGE_PATH"] ?? (Directory.Exists("/storage") ? "/storage" : Path.Combine(Directory.GetCurrentDirectory(), "storage"));
+
+        var rawDir = Path.Combine(storageBasePath, "raw", projectId.ToString());
+        if (Directory.Exists(rawDir))
+        {
+            try { Directory.Delete(rawDir, true); } catch { }
+        }
+
+        var proxyDir = Path.Combine(storageBasePath, "proxy", projectId.ToString());
+        if (Directory.Exists(proxyDir))
+        {
+            try { Directory.Delete(proxyDir, true); } catch { }
+        }
     }
 }

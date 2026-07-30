@@ -6,11 +6,13 @@ public class WorkstationAsset
 {
     public Guid AssetId { get; set; } = Guid.NewGuid();
     public Guid ProjectId { get; set; }
+    public Guid? ProjectLinkId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string OriginalFileName { get; set; } = string.Empty;
     public string ExternalSourceUrl { get; set; } = string.Empty;
     public string? ExternalSourceId { get; set; }
     public string? FileHash { get; set; }
+    public bool IsSourceRemoved { get; set; } = false;
     public string? StoragePathHighFidelity { get; set; }
     public string? StoragePathProxy { get; set; }
     public string? WaveformJsonPath { get; set; }
@@ -22,11 +24,14 @@ public class WorkstationAsset
     public int Height { get; set; } = 0;
     public int AudioChannels { get; set; } = 2;
     public string TimecodeStart { get; set; } = "00:00:00:00";
-    public string Status { get; set; } = "Pending"; // "Pending", "Downloading", "Transcoding", "Ready", "Failed"
+    public string Status { get; set; } = "Pending"; // "Discovered", "Pending", "Downloading", "Ingested", "Transcoding", "Ready", "Archived", "Failed"
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [JsonIgnore]
     public Project Project { get; set; } = null!;
+
+    [JsonIgnore]
+    public ProjectLink? ProjectLink { get; set; }
     public ICollection<TimecodeMarker> Markers { get; set; } = new List<TimecodeMarker>();
     public ICollection<MediaProcessingJob> Jobs { get; set; } = new List<MediaProcessingJob>();
 }

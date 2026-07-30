@@ -23,7 +23,8 @@ public class ProjectsControllerTests
 
     private ProjectsController CreateControllerWithUserClaims(WorkstationDbContext context, Guid userId, string role)
     {
-        var controller = new ProjectsController(context);
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
+        var controller = new ProjectsController(context, configuration);
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),

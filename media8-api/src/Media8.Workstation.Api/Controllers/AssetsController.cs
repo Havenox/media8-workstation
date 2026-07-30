@@ -1,38 +1,42 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using Media8.Workstation.Domain.Entities;
 using Media8.Workstation.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace Media8.Workstation.Api.Controllers;
 
-/// <summary>
-/// Modelo de requisição para ingestão de mídia remota.
-/// </summary>
-public class IngestMediaRequest
-{
-    public Guid ProjectId { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public string ExternalSourceUrl { get; set; } = string.Empty;
-    public string OriginalFileName { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Controlador responsável pelo gerenciamento de Assets e enfileiramento de Ingestão.
-/// </summary>
+[ApiController]
+[Route("api/v1/Projects/{projectId:guid}/[controller]")]
 [Authorize]
-public class AssetsController(WorkstationDbContext context) : WorkstationBaseController
+public class AssetsController : ControllerBase
 {
-    private readonly WorkstationDbContext _context = context;
+    private readonly WorkstationDbContext _context;
+    private readonly IConfiguration _configuration;
+
+    public AssetsController(WorkstationDbContext context, IConfiguration configuration)
+    {
+        _context = context;
+        _configuration = configuration;
+    }
 
     /// <summary>
-    /// Retorna todas as mídias de um Projeto específico.
+    /// Lista todas as mídias salvas ou descobertas de um projeto específico.
     /// </summary>
-    [HttpGet("Project/{projectId:guid}")]
-    public async Task<ActionResult<IEnumerable<WorkstationAsset>>> GetAssetsByProject(Guid projectId)
+    [HttpGet]
+    public async Task<IActionResult> GetProjectAssets(Guid projectId)
     {
+        var projectExists = await _context.Projects.AnyAsync(p => p.ProjectId == projectId && !p.IsDeleted);
+        if (!projectExists) return NotFound("Projeto não encontrado.");
+
         var assets = await _context.WorkstationAssets
-            .Include(a => a.Markers)
+            .AsNoTracking()
             .Where(a => a.ProjectId == projectId)
             .OrderByDescending(a => a.CreatedAt)
             .ToListAsync();
@@ -41,47 +45,48 @@ public class AssetsController(WorkstationDbContext context) : WorkstationBaseCon
     }
 
     /// <summary>
-    /// Retorna uma mídia por ID.
+    /// Remove uma mídia individualmente, limpando os arquivos físicos do disco e o registro no banco.
     /// </summary>
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<WorkstationAsset>> GetAssetById(Guid id)
+    [HttpDelete("{assetId:guid}")]
+    public async Task<IActionResult> DeleteAsset(Guid projectId, Guid assetId)
     {
         var asset = await _context.WorkstationAssets
-            .Include(a => a.Markers)
-            .FirstOrDefaultAsync(a => a.AssetId == id);
+            .FirstOrDefaultAsync(a => a.AssetId == assetId && a.ProjectId == projectId);
 
         if (asset == null) return NotFound();
 
-        return Ok(asset);
+        // 1. Purga arquivos físicos do disco
+        PurgeAssetDiskFiles(asset);
+
+        // 2. Remove jobs pendentes ou processados associados a este ativo
+        var jobs = await _context.MediaProcessingJobs.Where(j => j.AssetId == assetId).ToListAsync();
+        _context.MediaProcessingJobs.RemoveRange(jobs);
+
+        // 3. Remove registro da tabela WorkstationAssets
+        _context.WorkstationAssets.Remove(asset);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
     }
 
     /// <summary>
-    /// Registra um novo pedido de ingestão de mídia via link externo.
+    /// Dispara a ingestão/download de um ativo que foi apenas descoberto (Status = Discovered).
     /// </summary>
-    [HttpPost("Ingest")]
-    public async Task<ActionResult<WorkstationAsset>> IngestMedia([FromBody] IngestMediaRequest request)
+    [HttpPost("{assetId:guid}/download")]
+    public async Task<IActionResult> TriggerAssetDownload(Guid projectId, Guid assetId)
     {
-        if (string.IsNullOrWhiteSpace(request.ExternalSourceUrl) || string.IsNullOrWhiteSpace(request.Title))
-        {
-            return BadRequest(new { Message = "URL do link e Título são obrigatórios." });
-        }
+        var asset = await _context.WorkstationAssets
+            .FirstOrDefaultAsync(a => a.AssetId == assetId && a.ProjectId == projectId);
 
-        var asset = new WorkstationAsset
-        {
-            ProjectId = request.ProjectId,
-            Title = request.Title,
-            ExternalSourceUrl = request.ExternalSourceUrl,
-            OriginalFileName = request.OriginalFileName,
-            Status = "Pending",
-            CreatedAt = DateTime.UtcNow
-        };
+        if (asset == null) return NotFound();
 
-        _context.WorkstationAssets.Add(asset);
-        await _context.SaveChangesAsync();
+        asset.Status = "Downloading";
 
         var job = new MediaProcessingJob
         {
-            AssetId = asset.AssetId,
+            JobId = Guid.NewGuid(),
+            ProjectId = projectId,
+            AssetId = assetId,
             JobType = "IngestDownload",
             Status = "Pending",
             Priority = 10,
@@ -92,6 +97,22 @@ public class AssetsController(WorkstationDbContext context) : WorkstationBaseCon
         _context.MediaProcessingJobs.Add(job);
         await _context.SaveChangesAsync();
 
-        return AcceptedAtAction(nameof(GetAssetById), new { id = asset.AssetId }, asset);
+        return Ok(new { Message = $"Download enfileirado para o ativo '{asset.Title}'.", AssetId = assetId });
+    }
+
+    private void PurgeAssetDiskFiles(WorkstationAsset asset)
+    {
+        if (!string.IsNullOrEmpty(asset.StoragePathHighFidelity) && System.IO.File.Exists(asset.StoragePathHighFidelity))
+        {
+            try { System.IO.File.Delete(asset.StoragePathHighFidelity); } catch { }
+        }
+        if (!string.IsNullOrEmpty(asset.StoragePathProxy) && System.IO.File.Exists(asset.StoragePathProxy))
+        {
+            try { System.IO.File.Delete(asset.StoragePathProxy); } catch { }
+        }
+        if (!string.IsNullOrEmpty(asset.WaveformJsonPath) && System.IO.File.Exists(asset.WaveformJsonPath))
+        {
+            try { System.IO.File.Delete(asset.WaveformJsonPath); } catch { }
+        }
     }
 }
