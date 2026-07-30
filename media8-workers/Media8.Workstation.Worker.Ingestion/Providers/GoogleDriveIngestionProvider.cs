@@ -13,10 +13,16 @@ namespace Media8.Workstation.Worker.Ingestion.Providers;
 
 public class GoogleDriveIngestionProvider : IIngestionProvider
 {
-    private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> BlockedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".mp4", ".mov", ".mkv", ".avi", ".webm", ".flv", ".wmv", ".m4v",
-        ".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"
+        // Executáveis e instaladores binários
+        ".exe", ".msi", ".bat", ".cmd", ".sh", ".ps1", ".vbs", ".com", ".scr", ".pif", ".gadget", ".cpl",
+
+        // Scripts e código de máquina
+        ".js", ".jsx", ".ts", ".tsx", ".py", ".php", ".rb", ".pl", ".jar", ".class", ".dll", ".sys", ".so", ".dylib", ".wasm",
+
+        // Imagens de disco / instaladores com código executável
+        ".iso", ".img", ".dmg"
     };
 
     public bool CanHandle(string url, string linkType)
@@ -123,7 +129,7 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
                 // Varredura recursiva de subpastas
                 await ProcessFolderAsync(httpClient, apiKey, id, targetDirectory, onFileDownloadedAsync, result, cancellationToken);
             }
-            else if (IsMediaFile(name, mimeType))
+            else if (IsAllowedFile(name, mimeType))
             {
                 var discovered = new DiscoveredMediaFile
                 {
@@ -167,6 +173,13 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
         var name = root.GetProperty("name").GetString() ?? "file_media";
         var mimeType = root.GetProperty("mimeType").GetString() ?? "application/octet-stream";
 
+        if (!IsAllowedFile(name, mimeType))
+        {
+            result.Success = false;
+            result.ErrorMessage = $"O arquivo '{name}' foi bloqueado pelo filtro de segurança por conter extensão executável ou maliciosa.";
+            return;
+        }
+
         long size = 0;
         if (root.TryGetProperty("size", out var sizeProp))
         {
@@ -204,15 +217,26 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
         return localFilePath;
     }
 
-    private static bool IsMediaFile(string fileName, string mimeType)
+    private static bool IsAllowedFile(string fileName, string mimeType)
     {
-        if (mimeType.StartsWith("video/", StringComparison.OrdinalIgnoreCase) ||
-            mimeType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(fileName)) return false;
+
+        // Filtra lixo de sistema operacional e arquivos temporários de trava
+        var baseName = Path.GetFileName(fileName);
+        if (baseName.Equals(".DS_Store", StringComparison.OrdinalIgnoreCase) ||
+            baseName.Equals("Thumbs.db", StringComparison.OrdinalIgnoreCase) ||
+            baseName.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase) ||
+            baseName.StartsWith(".~lock.", StringComparison.OrdinalIgnoreCase))
         {
-            return true;
+            return false;
         }
 
         var ext = Path.GetExtension(fileName);
-        return !string.IsNullOrWhiteSpace(ext) && SupportedExtensions.Contains(ext);
+        if (!string.IsNullOrWhiteSpace(ext) && BlockedExtensions.Contains(ext))
+        {
+            return false;
+        }
+
+        return true;
     }
 }
