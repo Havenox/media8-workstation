@@ -106,9 +106,19 @@ const UserSelectDropdown: React.FC<{
           disabled={disabled}
           className="w-full flex items-center justify-between gap-2 p-2.5 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs font-medium text-[#400404] transition-all focus:outline-none focus:ring-2 focus:ring-[#400404]/20 cursor-pointer shadow-xs disabled:opacity-50"
         >
-          <span className="truncate">
+          <span className="flex items-center gap-2 truncate">
             {selectedUser ? (
-              <span className="font-semibold">{selectedUser.Name} <span className="text-[10px] text-[#5C1212]/70 font-mono">({selectedUser.Email})</span></span>
+              <>
+                <div className="w-5 h-5 rounded-full bg-[#400404] text-[#FFFBED] text-[10px] font-semibold flex items-center justify-center shrink-0 overflow-hidden border border-[#400404]/20">
+                  {selectedUser.AvatarUrl ? (
+                    <ProtectedImage src={selectedUser.AvatarUrl} alt={selectedUser.Name} className="w-full h-full object-cover" />
+                  ) : (
+                    selectedUser.Name ? selectedUser.Name.charAt(0).toUpperCase() : 'U'
+                  )}
+                </div>
+                <span className="font-semibold text-[#400404] truncate">{selectedUser.Name}</span>
+                <span className="text-[10px] text-[#5C1212]/70 font-mono truncate">({selectedUser.Email})</span>
+              </>
             ) : (
               <span className="text-gray-400 font-normal">{placeholder}</span>
             )}
@@ -130,14 +140,23 @@ const UserSelectDropdown: React.FC<{
                   onChange(u.UserId);
                   setIsOpen(false);
                 }}
-                className={`group flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+                className={`group flex items-center justify-between w-full px-2.5 py-2 rounded-lg text-xs transition-colors cursor-pointer text-left ${
                   isSelected ? 'bg-[#400404] text-[#FFFBED]' : 'text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED]'
                 }`}
               >
-                <div className="truncate">
-                  <div className="font-bold truncate">{u.Name}</div>
-                  <div className={`text-[10px] font-mono truncate ${isSelected ? 'text-[#FFFBED]/80' : 'text-[#5C1212]/70 group-hover:text-[#FFFBED]/80'}`}>
-                    {u.Email} — {u.Role}
+                <div className="flex items-center gap-2.5 truncate">
+                  <div className="w-5 h-5 rounded-full bg-[#400404] text-[#FFFBED] text-[10px] font-semibold flex items-center justify-center shrink-0 overflow-hidden border border-white/20">
+                    {u.AvatarUrl ? (
+                      <ProtectedImage src={u.AvatarUrl} alt={u.Name} className="w-full h-full object-cover" />
+                    ) : (
+                      u.Name ? u.Name.charAt(0).toUpperCase() : 'U'
+                    )}
+                  </div>
+                  <div className="truncate">
+                    <div className="font-bold truncate leading-tight">{u.Name}</div>
+                    <div className={`text-[10px] font-mono truncate leading-tight ${isSelected ? 'text-[#FFFBED]/80' : 'text-[#5C1212]/70 group-hover:text-[#FFFBED]/80'}`}>
+                      {u.Email} — {u.Role}
+                    </div>
                   </div>
                 </div>
                 {isSelected && <Check className="w-3.5 h-3.5 text-[#FFFBED] shrink-0 ml-2" />}
