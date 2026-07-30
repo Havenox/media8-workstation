@@ -110,6 +110,37 @@ public class Worker : BackgroundService
 
                     var rawTargetDir = Path.Combine(storageBasePath, "raw", projectId.ToString());
 
+                    // Carrega os ativos já catalogados no projeto para deduplicação idempotente
+                    var existingAssets = await dbContext.WorkstationAssets
+                        .AsNoTracking()
+                        .Where(a => a.ProjectId == projectId)
+                        .ToListAsync(stoppingToken);
+
+                    var existingExternalIds = new HashSet<string>(
+                        existingAssets.Where(a => !string.IsNullOrEmpty(a.ExternalSourceId)).Select(a => a.ExternalSourceId!),
+                        StringComparer.OrdinalIgnoreCase
+                    );
+
+                    var existingHashes = new HashSet<string>(
+                        existingAssets.Where(a => !string.IsNullOrEmpty(a.FileHash)).Select(a => a.FileHash!),
+                        StringComparer.OrdinalIgnoreCase
+                    );
+
+                    bool IsAlreadyIngested(DiscoveredMediaFile file)
+                    {
+                        if (!string.IsNullOrEmpty(file.ExternalId) && existingExternalIds.Contains(file.ExternalId))
+                        {
+                            _logger.LogInformation("[Worker.Ingestion] ⏭️ Mídia '{FileName}' (ID: {ExternalId}) já catalogada. Download ignorado para evitar duplicidade.", file.FileName, file.ExternalId);
+                            return true;
+                        }
+                        if (!string.IsNullOrEmpty(file.FileHash) && existingHashes.Contains(file.FileHash))
+                        {
+                            _logger.LogInformation("[Worker.Ingestion] ⏭️ Mídia '{FileName}' (Hash MD5: {Hash}) já catalogada. Download ignorado para evitar duplicidade.", file.FileName, file.FileHash);
+                            return true;
+                        }
+                        return false;
+                    }
+
                     int totalIngestedFiles = 0;
 
                     foreach (var link in linksToProcess)
@@ -128,6 +159,7 @@ public class Worker : BackgroundService
                             link,
                             apiKey,
                             rawTargetDir,
+                            IsAlreadyIngested,
                             async (discoveredFile, downloadedFilePath) =>
                             {
                                 // Inserção atômica de cada mídia física descoberta no banco
@@ -139,6 +171,8 @@ public class Worker : BackgroundService
                                     Title = discoveredFile.FileName,
                                     OriginalFileName = discoveredFile.FileName,
                                     ExternalSourceUrl = link.Url,
+                                    ExternalSourceId = discoveredFile.ExternalId,
+                                    FileHash = discoveredFile.FileHash,
                                     StoragePathHighFidelity = downloadedFilePath,
                                     FileSizeBytes = discoveredFile.FileSizeBytes,
                                     MimeType = string.IsNullOrWhiteSpace(discoveredFile.MimeType) ? "video/mp4" : discoveredFile.MimeType,
@@ -147,6 +181,9 @@ public class Worker : BackgroundService
                                 };
 
                                 dbContext.WorkstationAssets.Add(newAsset);
+
+                                if (!string.IsNullOrEmpty(discoveredFile.ExternalId)) existingExternalIds.Add(discoveredFile.ExternalId);
+                                if (!string.IsNullOrEmpty(discoveredFile.FileHash)) existingHashes.Add(discoveredFile.FileHash);
 
                                 // Enfileira job de transcodificação de proxy para o Worker.Transcoder
                                 var transcodeJob = new MediaProcessingJob

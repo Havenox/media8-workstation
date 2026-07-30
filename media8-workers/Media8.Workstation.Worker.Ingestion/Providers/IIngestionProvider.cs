@@ -12,6 +12,7 @@ public class DiscoveredMediaFile
     public string FileName { get; set; } = string.Empty;
     public string MimeType { get; set; } = string.Empty;
     public long FileSizeBytes { get; set; }
+    public string? FileHash { get; set; }
     public string DownloadUrl { get; set; } = string.Empty;
 }
 
@@ -29,6 +30,7 @@ public interface IIngestionProvider
         ProjectLink link,
         string apiKey,
         string targetDirectory,
+        Func<DiscoveredMediaFile, bool> isAlreadyIngested,
         Func<DiscoveredMediaFile, string, Task> onFileDownloadedAsync,
         CancellationToken cancellationToken);
 }

@@ -9,6 +9,8 @@ public class WorkstationAsset
     public string Title { get; set; } = string.Empty;
     public string OriginalFileName { get; set; } = string.Empty;
     public string ExternalSourceUrl { get; set; } = string.Empty;
+    public string? ExternalSourceId { get; set; }
+    public string? FileHash { get; set; }
     public string? StoragePathHighFidelity { get; set; }
     public string? StoragePathProxy { get; set; }
     public string? WaveformJsonPath { get; set; }

@@ -71,6 +71,8 @@ public static class DbSeeder
             // 5. Ensure WorkstationAssets table uses ProjectId and drop NOT NULL constraint from legacy OrderId
             await dbContext.Database.ExecuteSqlRawAsync(@"
                 ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""ProjectId"" uuid REFERENCES ""Projects""(""ProjectId"") ON DELETE CASCADE;
+                ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""ExternalSourceId"" character varying(255) NULL;
+                ALTER TABLE ""WorkstationAssets"" ADD COLUMN IF NOT EXISTS ""FileHash"" character varying(100) NULL;
                 
                 DO $$
                 BEGIN

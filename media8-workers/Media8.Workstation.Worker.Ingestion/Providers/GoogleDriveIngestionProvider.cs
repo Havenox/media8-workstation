@@ -36,6 +36,7 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
         ProjectLink link,
         string apiKey,
         string targetDirectory,
+        Func<DiscoveredMediaFile, bool> isAlreadyIngested,
         Func<DiscoveredMediaFile, string, Task> onFileDownloadedAsync,
         CancellationToken cancellationToken)
     {
@@ -56,18 +57,18 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
         try
         {
             var folderIdMatch = Regex.Match(link.Url, @"/folders/([a-zA-Z0-9_-]+)");
-            var fileIdMatch = Regex.Match(link.Url, @"/file/d/([a-zA-Z0-9_-]+)") ;
+            var fileIdMatch = Regex.Match(link.Url, @"/file/d/([a-zA-Z0-9_-]+)");
             var queryIdMatch = Regex.Match(link.Url, @"id=([a-zA-Z0-9_-]+)");
 
             if (folderIdMatch.Success)
             {
                 var folderId = folderIdMatch.Groups[1].Value;
-                await ProcessFolderAsync(httpClient, apiKey, folderId, targetDirectory, onFileDownloadedAsync, result, cancellationToken);
+                await ProcessFolderAsync(httpClient, apiKey, folderId, targetDirectory, isAlreadyIngested, onFileDownloadedAsync, result, cancellationToken);
             }
             else if (fileIdMatch.Success || queryIdMatch.Success)
             {
                 var fileId = fileIdMatch.Success ? fileIdMatch.Groups[1].Value : queryIdMatch.Groups[1].Value;
-                await ProcessSingleFileAsync(httpClient, apiKey, fileId, targetDirectory, onFileDownloadedAsync, result, cancellationToken);
+                await ProcessSingleFileAsync(httpClient, apiKey, fileId, targetDirectory, isAlreadyIngested, onFileDownloadedAsync, result, cancellationToken);
             }
             else
             {
@@ -92,11 +93,12 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
         string apiKey,
         string folderId,
         string targetDirectory,
+        Func<DiscoveredMediaFile, bool> isAlreadyIngested,
         Func<DiscoveredMediaFile, string, Task> onFileDownloadedAsync,
         IngestionProviderResult result,
         CancellationToken cancellationToken)
     {
-        var listUrl = $"https://www.googleapis.com/drive/v3/files?q='{folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType,size)&key={Uri.EscapeDataString(apiKey)}";
+        var listUrl = $"https://www.googleapis.com/drive/v3/files?q='{folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType,size,md5Checksum)&key={Uri.EscapeDataString(apiKey)}";
         var response = await httpClient.GetAsync(listUrl, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -117,6 +119,7 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
             var id = fileElement.GetProperty("id").GetString() ?? string.Empty;
             var name = fileElement.GetProperty("name").GetString() ?? string.Empty;
             var mimeType = fileElement.GetProperty("mimeType").GetString() ?? string.Empty;
+            var md5 = fileElement.TryGetProperty("md5Checksum", out var md5Prop) ? md5Prop.GetString() : null;
 
             long size = 0;
             if (fileElement.TryGetProperty("size", out var sizeProp))
@@ -127,7 +130,7 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
             if (mimeType == "application/vnd.google-apps.folder")
             {
                 // Varredura recursiva de subpastas
-                await ProcessFolderAsync(httpClient, apiKey, id, targetDirectory, onFileDownloadedAsync, result, cancellationToken);
+                await ProcessFolderAsync(httpClient, apiKey, id, targetDirectory, isAlreadyIngested, onFileDownloadedAsync, result, cancellationToken);
             }
             else if (IsAllowedFile(name, mimeType))
             {
@@ -137,8 +140,15 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
                     FileName = name,
                     MimeType = mimeType,
                     FileSizeBytes = size,
+                    FileHash = md5,
                     DownloadUrl = $"https://www.googleapis.com/drive/v3/files/{id}?alt=media&key={Uri.EscapeDataString(apiKey)}"
                 };
+
+                // Verifica deduplicação antes de iniciar o download
+                if (isAlreadyIngested != null && isAlreadyIngested(discovered))
+                {
+                    continue;
+                }
 
                 var downloadedFilePath = await DownloadFileToDiskAsync(httpClient, discovered.DownloadUrl, targetDirectory, name, cancellationToken);
                 result.DiscoveredFiles.Add(discovered);
@@ -153,11 +163,12 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
         string apiKey,
         string fileId,
         string targetDirectory,
+        Func<DiscoveredMediaFile, bool> isAlreadyIngested,
         Func<DiscoveredMediaFile, string, Task> onFileDownloadedAsync,
         IngestionProviderResult result,
         CancellationToken cancellationToken)
     {
-        var metaUrl = $"https://www.googleapis.com/drive/v3/files/{fileId}?fields=id,name,mimeType,size&key={Uri.EscapeDataString(apiKey)}";
+        var metaUrl = $"https://www.googleapis.com/drive/v3/files/{fileId}?fields=id,name,mimeType,size,md5Checksum&key={Uri.EscapeDataString(apiKey)}";
         var response = await httpClient.GetAsync(metaUrl, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -172,6 +183,7 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
 
         var name = root.GetProperty("name").GetString() ?? "file_media";
         var mimeType = root.GetProperty("mimeType").GetString() ?? "application/octet-stream";
+        var md5 = root.TryGetProperty("md5Checksum", out var md5Prop) ? md5Prop.GetString() : null;
 
         if (!IsAllowedFile(name, mimeType))
         {
@@ -192,8 +204,15 @@ public class GoogleDriveIngestionProvider : IIngestionProvider
             FileName = name,
             MimeType = mimeType,
             FileSizeBytes = size,
+            FileHash = md5,
             DownloadUrl = $"https://www.googleapis.com/drive/v3/files/{fileId}?alt=media&key={Uri.EscapeDataString(apiKey)}"
         };
+
+        // Verifica deduplicação antes de iniciar o download
+        if (isAlreadyIngested != null && isAlreadyIngested(discovered))
+        {
+            return;
+        }
 
         var downloadedFilePath = await DownloadFileToDiskAsync(httpClient, discovered.DownloadUrl, targetDirectory, name, cancellationToken);
         result.DiscoveredFiles.Add(discovered);
