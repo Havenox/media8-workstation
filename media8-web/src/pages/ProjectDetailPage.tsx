@@ -60,6 +60,9 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = () => {
         const data = await ProjectService.getProjectById(projectId);
         if (data) {
           setProject(data);
+          try {
+            window.history.replaceState({ ...window.history.state, usr: { ...window.history.state?.usr, projectTitle: data.Title } }, '');
+          } catch {}
           if (data.Assets && data.Assets.length > 0) {
             setSelectedAsset(data.Assets[0]);
           }
@@ -161,46 +164,36 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Dynamic Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-[#400404]/15 shadow-xs">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <Link
-              to="/projects"
-              className="inline-flex items-center gap-1 text-xs font-medium text-[#400404]/80 hover:text-[#400404] transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Projetos</span>
-            </Link>
-            <span className="text-[#400404]/30">/</span>
-            {getStatusBadge(project.Status)}
-            {project.ExternalOrderReference && (
-              <span className="text-[11px] font-mono font-semibold bg-[#400404]/5 text-[#400404] px-2 py-0.5 rounded border border-[#400404]/15">
-                #ID: {project.ExternalOrderReference}
-              </span>
-            )}
-          </div>
-
-          <h1 className="text-2xl font-bold text-[#400404] tracking-tight">
-            {project.Title}
-          </h1>
-
-          {project.BriefingText && (
-            <p className="text-xs text-[#5C1212]/80 font-normal leading-relaxed max-w-3xl">
-              {project.BriefingText}
-            </p>
+      {/* Subcabeçalho do Projeto (Sem Caixa / Flat, conforme print3) */}
+      <div className="pb-3 border-b border-[#400404]/15 space-y-2">
+        <div className="flex items-center gap-3 text-xs font-mono">
+          {getStatusBadge(project.Status)}
+          {project.ExternalOrderReference && (
+            <span className="text-[#400404] font-semibold tracking-wider">
+              ID: {project.ExternalOrderReference}
+            </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h1 className="text-3xl font-extrabold text-[#400404] tracking-tight">
+            {project.Title}
+          </h1>
+
           <Button
             onClick={() => navigate(`/workstation/${project.ProjectId}`)}
-            className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs border-none"
+            className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-2 px-5 rounded-xl flex items-center gap-2 cursor-pointer shadow-xs border-none shrink-0"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Abrir Workstation PAM</span>
           </Button>
         </div>
+
+        {project.BriefingText && (
+          <p className="text-xs text-[#5C1212]/80 font-normal leading-relaxed max-w-3xl pt-0.5">
+            {project.BriefingText}
+          </p>
+        )}
       </div>
 
       {/* Main Grid Layout (2/3 Left Media Pool + 1/3 Right Panels) */}

@@ -34,7 +34,8 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
         return { breadcrumbs: ['Home', 'Notificações'], title: 'Central de Notificações' };
       default:
         if (pathname.startsWith('/projects/')) {
-          return { breadcrumbs: ['Home', 'Projetos', 'Visão Geral do Projeto'], title: 'Detalhes & Media Pool do Projeto' };
+          const projectTitle = (location.state as any)?.projectTitle || 'Projeto';
+          return { breadcrumbs: ['Home', 'Projetos', projectTitle], title: 'Visão Geral do Projeto' };
         }
         if (pathname.startsWith('/workstation/')) {
           return { breadcrumbs: ['Home', 'Workstation PAM'], title: 'Estação de Corte & Timecode' };

@@ -929,7 +929,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
                   {!isArchived && (
                     <Button
-                      onClick={() => navigate(`/projects/${proj.ProjectId}`)}
+                      onClick={() => navigate(`/projects/${proj.ProjectId}`, { state: { projectTitle: proj.Title } })}
                       size="sm"
                       className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-1.5 px-3.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs border-none"
                     >
