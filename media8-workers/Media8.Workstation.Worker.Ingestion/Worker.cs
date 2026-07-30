@@ -1,36 +1,22 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Media8.Workstation.Domain.Entities;
-using Media8.Workstation.Infrastructure.Data;
 using Media8.Workstation.Worker.Ingestion.Providers;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Media8.Workstation.Worker.Ingestion.Services;
 
 namespace Media8.Workstation.Worker.Ingestion;
 
 public class Worker : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly InternalApiClient _apiClient;
     private readonly IEnumerable<IIngestionProvider> _providers;
     private readonly IConfiguration _configuration;
     private readonly ILogger<Worker> _logger;
 
-    private const string GoogleDriveApiKeySettingKey = "GoogleDrive:ApiKey";
-
     public Worker(
-        IServiceScopeFactory scopeFactory,
+        InternalApiClient apiClient,
         IEnumerable<IIngestionProvider> providers,
         IConfiguration configuration,
         ILogger<Worker> logger)
     {
-        _scopeFactory = scopeFactory;
+        _apiClient = apiClient;
         _providers = providers;
         _configuration = configuration;
         _logger = logger;
@@ -38,67 +24,17 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("[Worker.Ingestion] Serviço de Ingestão de Mídias iniciado.");
+        _logger.LogInformation("[Worker.Ingestion] Serviço de Ingestão de Mídias iniciado (Comunicação 100% REST API).");
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                using var scope = _scopeFactory.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<WorkstationDbContext>();
-
-                var job = await dbContext.MediaProcessingJobs
-                    .Where(j => j.JobType == "IngestDownload" && j.Status == "Pending")
-                    .OrderBy(j => j.Priority)
-                    .ThenBy(j => j.CreatedAt)
-                    .FirstOrDefaultAsync(stoppingToken);
+                var job = await _apiClient.GetNextIngestJobAsync(stoppingToken);
 
                 if (job != null)
                 {
-                    _logger.LogInformation("[Worker.Ingestion] Processando Job {JobId}...", job.JobId);
-                    job.Status = "Processing";
-                    job.UpdatedAt = DateTime.UtcNow;
-                    await dbContext.SaveChangesAsync(stoppingToken);
-
-                    // Carrega a Chave de API do Google Drive do banco de dados
-                    var apiKeySetting = await dbContext.SystemSettings
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(s => s.Key == GoogleDriveApiKeySettingKey, stoppingToken);
-
-                    var apiKey = apiKeySetting?.Value ?? string.Empty;
-
-                    // Identifica se o job está atrelado a um Project ou a um Asset
-                    Guid projectId = Guid.Empty;
-                    List<ProjectLink> linksToProcess = new();
-
-                    if (job.ProjectId.HasValue)
-                    {
-                        projectId = job.ProjectId.Value;
-                        linksToProcess = await dbContext.ProjectLinks
-                            .Where(l => l.ProjectId == projectId)
-                            .ToListAsync(stoppingToken);
-                    }
-                    else if (job.AssetId.HasValue)
-                    {
-                        var asset = await dbContext.WorkstationAssets
-                            .AsNoTracking()
-                            .FirstOrDefaultAsync(a => a.AssetId == job.AssetId.Value, stoppingToken);
-
-                        if (asset != null)
-                        {
-                            projectId = asset.ProjectId;
-                            if (!string.IsNullOrWhiteSpace(asset.ExternalSourceUrl))
-                            {
-                                linksToProcess.Add(new ProjectLink
-                                {
-                                    ProjectLinkId = Guid.NewGuid(),
-                                    ProjectId = asset.ProjectId,
-                                    Url = asset.ExternalSourceUrl,
-                                    LinkType = "GoogleDrive"
-                                });
-                            }
-                        }
-                    }
+                    _logger.LogInformation("[Worker.Ingestion] Processando Job {JobId} para Projeto {ProjectId}...", job.JobId, job.ProjectId);
 
                     var storageBasePath = _configuration["STORAGE_PATH"];
                     if (string.IsNullOrWhiteSpace(storageBasePath))
@@ -108,148 +44,98 @@ public class Worker : BackgroundService
                             : Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "media8-storage"));
                     }
 
-                    var rawTargetDir = Path.Combine(storageBasePath, "raw", projectId.ToString());
+                    var rawTargetDir = Path.Combine(storageBasePath, "raw", job.ProjectId.ToString());
 
-                    // Carrega os ativos já catalogados no projeto para deduplicação idempotente
-                    var existingAssets = await dbContext.WorkstationAssets
-                        .AsNoTracking()
-                        .Where(a => a.ProjectId == projectId)
-                        .ToListAsync(stoppingToken);
-
-                    var existingExternalIds = new HashSet<string>(
-                        existingAssets.Where(a => !string.IsNullOrEmpty(a.ExternalSourceId)).Select(a => a.ExternalSourceId!),
-                        StringComparer.OrdinalIgnoreCase
-                    );
-
-                    var existingHashes = new HashSet<string>(
-                        existingAssets.Where(a => !string.IsNullOrEmpty(a.FileHash)).Select(a => a.FileHash!),
-                        StringComparer.OrdinalIgnoreCase
-                    );
+                    var existingExternalIds = new HashSet<string>(job.ExistingExternalIds, StringComparer.OrdinalIgnoreCase);
+                    var existingHashes = new HashSet<string>(job.ExistingHashes, StringComparer.OrdinalIgnoreCase);
 
                     bool IsAlreadyIngested(DiscoveredMediaFile file)
                     {
                         if (!string.IsNullOrEmpty(file.ExternalId) && existingExternalIds.Contains(file.ExternalId))
                         {
-                            _logger.LogInformation("[Worker.Ingestion] ⏭️ Mídia '{FileName}' (ID: {ExternalId}) já catalogada. Download ignorado para evitar duplicidade.", file.FileName, file.ExternalId);
+                            _logger.LogInformation("[Worker.Ingestion] ⏭️ Mídia '{FileName}' (ID: {ExternalId}) já catalogada. Download ignorado.", file.FileName, file.ExternalId);
                             return true;
                         }
                         if (!string.IsNullOrEmpty(file.FileHash) && existingHashes.Contains(file.FileHash))
                         {
-                            _logger.LogInformation("[Worker.Ingestion] ⏭️ Mídia '{FileName}' (Hash MD5: {Hash}) já catalogada. Download ignorado para evitar duplicidade.", file.FileName, file.FileHash);
+                            _logger.LogInformation("[Worker.Ingestion] ⏭️ Mídia '{FileName}' (Hash MD5: {Hash}) já catalogada. Download ignorado.", file.FileName, file.FileHash);
                             return true;
                         }
                         return false;
                     }
 
-                    var targetProject = await dbContext.Projects
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(p => p.ProjectId == projectId, stoppingToken);
-
-                    bool shouldDownloadNow = (targetProject?.AutoIngest == true) || job.AssetId.HasValue;
-
                     int totalIngestedFiles = 0;
 
-                    foreach (var link in linksToProcess)
+                    foreach (var linkDto in job.Links)
                     {
-                        var provider = _providers.FirstOrDefault(p => p.CanHandle(link.Url, link.LinkType));
+                        var linkEntity = new Domain.Entities.ProjectLink
+                        {
+                            ProjectLinkId = linkDto.ProjectLinkId,
+                            ProjectId = linkDto.ProjectId,
+                            Url = linkDto.Url,
+                            LinkType = linkDto.LinkType
+                        };
+
+                        var provider = _providers.FirstOrDefault(p => p.CanHandle(linkEntity.Url, linkEntity.LinkType));
 
                         if (provider == null)
                         {
-                            _logger.LogWarning("[Worker.Ingestion] Nenhum provedor configurado para o link '{Url}' (Tipo: {LinkType}). Ignorando com segurança.", link.Url, link.LinkType);
+                            _logger.LogWarning("[Worker.Ingestion] Nenhum provedor configurado para o link '{Url}'. Ignorando com segurança.", linkEntity.Url);
                             continue;
                         }
 
-                        _logger.LogInformation("[Worker.Ingestion] Executando varredura via {ProviderName} para URL: {Url} (AutoIngest: {AutoIngest})", provider.GetType().Name, link.Url, shouldDownloadNow);
+                        _logger.LogInformation("[Worker.Ingestion] Executando varredura via {ProviderName} para URL: {Url} (AutoIngest: {AutoIngest})",
+                            provider.GetType().Name, linkEntity.Url, job.ShouldDownloadNow);
 
                         var result = await provider.DiscoverAndDownloadFilesAsync(
-                            link,
-                            apiKey,
+                            linkEntity,
+                            job.GoogleDriveApiKey,
                             rawTargetDir,
                             IsAlreadyIngested,
                             async (discoveredFile, downloadedFilePath) =>
                             {
-                                var newAssetId = job.AssetId ?? Guid.NewGuid();
-                                var existingAsset = job.AssetId.HasValue
-                                    ? await dbContext.WorkstationAssets.FirstOrDefaultAsync(a => a.AssetId == job.AssetId.Value, stoppingToken)
-                                    : null;
+                                var req = new RegisterAssetRequest(
+                                    job.AssetId,
+                                    job.ProjectId,
+                                    linkDto.ProjectLinkId,
+                                    discoveredFile.FileName,
+                                    discoveredFile.FileName,
+                                    linkDto.Url,
+                                    discoveredFile.ExternalId,
+                                    discoveredFile.FileHash,
+                                    discoveredFile.FileSizeBytes,
+                                    string.IsNullOrWhiteSpace(discoveredFile.MimeType) ? "video/mp4" : discoveredFile.MimeType,
+                                    downloadedFilePath,
+                                    job.ShouldDownloadNow
+                                );
 
-                                bool isNewAsset = (existingAsset == null);
-                                var newAsset = existingAsset ?? new WorkstationAsset
+                                bool registered = await _apiClient.RegisterAssetAsync(job.JobId, req, stoppingToken);
+                                if (registered)
                                 {
-                                    AssetId = newAssetId,
-                                    ProjectId = projectId
-                                };
+                                    if (!string.IsNullOrEmpty(discoveredFile.ExternalId)) existingExternalIds.Add(discoveredFile.ExternalId);
+                                    if (!string.IsNullOrEmpty(discoveredFile.FileHash)) existingHashes.Add(discoveredFile.FileHash);
+                                    totalIngestedFiles++;
 
-                                newAsset.ProjectLinkId = link.ProjectLinkId;
-                                newAsset.Title = discoveredFile.FileName;
-                                newAsset.OriginalFileName = discoveredFile.FileName;
-                                newAsset.ExternalSourceUrl = link.Url;
-                                newAsset.ExternalSourceId = discoveredFile.ExternalId;
-                                newAsset.FileHash = discoveredFile.FileHash;
-                                newAsset.FileSizeBytes = discoveredFile.FileSizeBytes;
-                                newAsset.MimeType = string.IsNullOrWhiteSpace(discoveredFile.MimeType) ? "video/mp4" : discoveredFile.MimeType;
-
-                                if (shouldDownloadNow)
-                                {
-                                    newAsset.StoragePathHighFidelity = downloadedFilePath;
-                                    newAsset.Status = "Ingested";
-                                }
-                                else
-                                {
-                                    newAsset.Status = "Discovered";
-                                }
-
-                                if (isNewAsset)
-                                {
-                                    dbContext.WorkstationAssets.Add(newAsset);
-                                }
-
-                                if (!string.IsNullOrEmpty(discoveredFile.ExternalId)) existingExternalIds.Add(discoveredFile.ExternalId);
-                                if (!string.IsNullOrEmpty(discoveredFile.FileHash)) existingHashes.Add(discoveredFile.FileHash);
-
-                                if (shouldDownloadNow)
-                                {
-                                    // Enfileira job de transcodificação de proxy para o Worker.Transcoder
-                                    var transcodeJob = new MediaProcessingJob
+                                    if (job.ShouldDownloadNow)
                                     {
-                                        JobId = Guid.NewGuid(),
-                                        ProjectId = projectId,
-                                        AssetId = newAssetId,
-                                        JobType = "TranscodeProxy",
-                                        Status = "Pending",
-                                        Priority = 10,
-                                        CreatedAt = DateTime.UtcNow,
-                                        UpdatedAt = DateTime.UtcNow
-                                    };
-
-                                    dbContext.MediaProcessingJobs.Add(transcodeJob);
-                                }
-
-                                await dbContext.SaveChangesAsync(stoppingToken);
-
-                                totalIngestedFiles++;
-                                if (shouldDownloadNow)
-                                {
-                                    _logger.LogInformation("[Worker.Ingestion] ✓ Mídia '{FileName}' baixada e catalogada (AssetId: {AssetId}). Job TranscodeProxy enfileirado.", discoveredFile.FileName, newAssetId);
-                                }
-                                else
-                                {
-                                    _logger.LogInformation("[Worker.Ingestion] 🔍 Mídia '{FileName}' descoberta e catalogada (Status: Discovered). Aguardando seleção do editor para download.", discoveredFile.FileName);
+                                        _logger.LogInformation("[Worker.Ingestion] ✓ Mídia '{FileName}' baixada e catalogada via API. TranscodeProxy enfileirado.", discoveredFile.FileName);
+                                    }
+                                    else
+                                    {
+                                        _logger.LogInformation("[Worker.Ingestion] 🔍 Mídia '{FileName}' descoberta e catalogada via API (Status: Discovered).", discoveredFile.FileName);
+                                    }
                                 }
                             },
                             stoppingToken);
 
                         if (!result.Success)
                         {
-                            _logger.LogError("[Worker.Ingestion] ❌ Falha durante ingestão do link {Url}: {Error}", link.Url, result.ErrorMessage);
+                            _logger.LogError("[Worker.Ingestion] ❌ Falha durante ingestão do link {Url}: {Error}", linkDto.Url, result.ErrorMessage);
                         }
                     }
 
-                    job.Status = "Completed";
-                    job.UpdatedAt = DateTime.UtcNow;
-                    await dbContext.SaveChangesAsync(stoppingToken);
-
-                    _logger.LogInformation("[Worker.Ingestion] Job {JobId} concluído com sucesso. Total de mídias físicas ingeridas: {TotalCount}.", job.JobId, totalIngestedFiles);
+                    await _apiClient.CompleteJobAsync(job.JobId, stoppingToken);
+                    _logger.LogInformation("[Worker.Ingestion] Job {JobId} concluído via API. Total de mídias físicas ingeridas: {TotalCount}.", job.JobId, totalIngestedFiles);
                 }
                 else
                 {

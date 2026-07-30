@@ -13,6 +13,5 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\media8-api\src\Media8.Workstation.Domain\Media8.Workstation.Domain.csproj" />
-    <ProjectReference Include="..\..\media8-api\src\Media8.Workstation.Infrastructure\Media8.Workstation.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
