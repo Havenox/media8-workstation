@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 
 namespace Media8.Workstation.Worker.Transcoder.Services;
@@ -45,8 +44,8 @@ public class FFprobeService(ILogger<FFprobeService> logger)
             using var doc = JsonDocument.Parse(jsonOutput);
             var root = doc.RootElement;
 
-            // Extract Format Duration
-            if (root.TryGetProperty("format", fontFormat => fontFormat.TryGetProperty("duration", out var durProp)))
+            // Extrai Duração do Formato
+            if (root.TryGetProperty("format", out var formatElement) && formatElement.TryGetProperty("duration", out var durProp))
             {
                 if (double.TryParse(durProp.GetString(), System.Globalization.CultureInfo.InvariantCulture, out var dur))
                 {
@@ -54,7 +53,7 @@ public class FFprobeService(ILogger<FFprobeService> logger)
                 }
             }
 
-            // Extract Streams (Video & Audio)
+            // Extrai Streams (Vídeo e Áudio)
             if (root.TryGetProperty("streams", out var streamsProp) && streamsProp.ValueKind == JsonValueKind.Array)
             {
                 foreach (var stream in streamsProp.EnumerateArray())
@@ -79,10 +78,10 @@ public class FFprobeService(ILogger<FFprobeService> logger)
                             }
                         }
 
-                        // Check timecode in video tags
-                        if (stream.TryGetProperty("tags", out var tags) && tags.TryGetProperty("timecode", fontTc => fontTc.ValueKind == JsonValueKind.String))
+                        // Verifica timecode nas tags de vídeo
+                        if (stream.TryGetProperty("tags", out var tags) && tags.TryGetProperty("timecode", out var tcProp) && tcProp.ValueKind == JsonValueKind.String)
                         {
-                            result.TimecodeStart = tags.GetProperty("timecode").GetString() ?? "00:00:00:00";
+                            result.TimecodeStart = tcProp.GetString() ?? "00:00:00:00";
                         }
                     }
                     else if (codecType == "audio")

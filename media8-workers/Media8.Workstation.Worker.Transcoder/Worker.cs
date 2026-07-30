@@ -7,8 +7,7 @@ namespace Media8.Workstation.Worker.Transcoder;
 
 public class Worker(
     ILogger<Worker> logger,
-    IServiceProvider serviceProvider,
-    IConfiguration configuration) : BackgroundService
+    IServiceProvider serviceProvider) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
