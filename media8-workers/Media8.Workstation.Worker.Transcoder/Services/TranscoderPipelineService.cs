@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Media8.Workstation.Domain.Entities;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Media8.Workstation.Worker.Transcoder.Services;
@@ -15,6 +16,7 @@ public class TranscoderPipelineResult
 
 public class TranscoderPipelineService(
     ILogger<TranscoderPipelineService> logger,
+    IConfiguration configuration,
     FFprobeService ffprobeService,
     WaveformExtractorService waveformExtractorService,
     DocumentTextExtractorService documentTextExtractorService)
@@ -33,7 +35,9 @@ public class TranscoderPipelineService(
             return result;
         }
 
-        var storageBaseDir = Path.Combine(Directory.GetCurrentDirectory(), "storage");
+        var storageBaseDir = configuration["STORAGE_PATH"]
+            ?? (Directory.Exists("/storage") ? "/storage" : Path.Combine(Directory.GetCurrentDirectory(), "storage"));
+        
         var proxyDir = Path.Combine(storageBaseDir, "proxy", asset.ProjectId.ToString());
         if (!Directory.Exists(proxyDir))
         {
