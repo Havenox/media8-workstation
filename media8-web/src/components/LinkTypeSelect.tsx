@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import {
-  FolderKanban,
-  Video,
-  Music,
-  Image as ImageIcon,
+  Folder,
+  File,
   FileText,
   Link2,
   ChevronDown,
@@ -15,7 +13,7 @@ import {
   PopoverTrigger,
 } from './ui/popover';
 
-export type LinkTypeOption = 'Folder' | 'Video' | 'Audio' | 'Image' | 'PDF' | 'Other';
+export type LinkTypeOption = 'Folder' | 'File' | 'Document' | 'Other';
 
 interface LinkTypeSelectProps {
   value: LinkTypeOption;
@@ -23,11 +21,9 @@ interface LinkTypeSelectProps {
 }
 
 const LINK_TYPE_OPTIONS: { id: LinkTypeOption; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: 'Folder', label: 'Pasta Drive', icon: FolderKanban },
-  { id: 'Video', label: 'Vídeo', icon: Video },
-  { id: 'Audio', label: 'Áudio', icon: Music },
-  { id: 'Image', label: 'Imagem', icon: ImageIcon },
-  { id: 'PDF', label: 'PDF', icon: FileText },
+  { id: 'Folder', label: 'Pasta', icon: Folder },
+  { id: 'File', label: 'Arquivo', icon: File },
+  { id: 'Document', label: 'Documento', icon: FileText },
   { id: 'Other', label: 'Outro', icon: Link2 },
 ];
 
@@ -42,7 +38,7 @@ export const LinkTypeSelect: React.FC<LinkTypeSelectProps> = ({ value, onChange 
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center justify-between gap-2 px-3 py-2 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-lg text-xs font-medium text-[#400404] transition-all focus:outline-none focus:ring-2 focus:ring-[#400404]/20 shrink-0 min-w-[130px] cursor-pointer shadow-xs"
+          className="flex items-center justify-between gap-2 px-3 py-2 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs font-semibold text-[#400404] transition-all focus:outline-none focus:ring-2 focus:ring-[#400404]/20 shrink-0 min-w-[125px] cursor-pointer shadow-xs"
         >
           <span className="flex items-center gap-2 truncate">
             <SelectedIcon className="w-3.5 h-3.5 text-[#400404] shrink-0" />
@@ -53,7 +49,7 @@ export const LinkTypeSelect: React.FC<LinkTypeSelectProps> = ({ value, onChange 
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[150px] p-1.5 bg-[#FFFBED] border border-[#400404]/25 shadow-xl rounded-xl space-y-0.5"
+        className="w-[140px] p-1.5 bg-[#FFFBED] border border-[#400404]/25 shadow-xl rounded-xl space-y-0.5"
         align="start"
       >
         {LINK_TYPE_OPTIONS.map((option) => {

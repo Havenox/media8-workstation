@@ -32,6 +32,7 @@ import {
   Archive,
   RotateCcw,
   ShieldAlert,
+  Check,
 } from 'lucide-react';
 import { format, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -85,6 +86,121 @@ interface FormEditorAssignment {
   AssignmentRole: PamRoleType;
 }
 
+const UserSelectDropdown: React.FC<{
+  users: User[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  filterOutUserIds?: string[];
+  disabled?: boolean;
+}> = ({ users, value, onChange, placeholder = 'Selecione um editor...', filterOutUserIds = [], disabled = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const availableUsers = users.filter((u) => !filterOutUserIds.includes(u.UserId));
+  const selectedUser = users.find((u) => u.UserId === value);
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className="w-full flex items-center justify-between gap-2 p-2.5 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs font-medium text-[#400404] transition-all focus:outline-none focus:ring-2 focus:ring-[#400404]/20 cursor-pointer shadow-xs disabled:opacity-50"
+        >
+          <span className="truncate">
+            {selectedUser ? (
+              <span className="font-semibold">{selectedUser.Name} <span className="text-[10px] text-[#5C1212]/70 font-mono">({selectedUser.Email})</span></span>
+            ) : (
+              <span className="text-gray-400 font-normal">{placeholder}</span>
+            )}
+          </span>
+          <ChevronDown className={`w-3.5 h-3.5 text-[#400404]/60 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-1.5 bg-[#FFFBED] border border-[#400404]/25 shadow-xl rounded-xl space-y-0.5 max-h-60 overflow-y-auto z-50" align="start">
+        {availableUsers.length === 0 ? (
+          <div className="p-2 text-center text-xs text-[#5C1212]/70">Nenhum editor disponível.</div>
+        ) : (
+          availableUsers.map((u) => {
+            const isSelected = u.UserId === value;
+            return (
+              <button
+                key={u.UserId}
+                type="button"
+                onClick={() => {
+                  onChange(u.UserId);
+                  setIsOpen(false);
+                }}
+                className={`group flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+                  isSelected ? 'bg-[#400404] text-[#FFFBED]' : 'text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED]'
+                }`}
+              >
+                <div className="truncate">
+                  <div className="font-bold truncate">{u.Name}</div>
+                  <div className={`text-[10px] font-mono truncate ${isSelected ? 'text-[#FFFBED]/80' : 'text-[#5C1212]/70 group-hover:text-[#FFFBED]/80'}`}>
+                    {u.Email} — {u.Role}
+                  </div>
+                </div>
+                {isSelected && <Check className="w-3.5 h-3.5 text-[#FFFBED] shrink-0 ml-2" />}
+              </button>
+            );
+          })
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+const RoleSelectDropdown: React.FC<{
+  value: PamRoleType;
+  onChange: (value: PamRoleType) => void;
+}> = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedRole = PAM_ROLES.find((r) => r.id === value) || PAM_ROLES[0];
+  const IconComponent = selectedRole.icon;
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-full flex items-center justify-between gap-2 p-2.5 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs font-semibold text-[#400404] transition-all focus:outline-none focus:ring-2 focus:ring-[#400404]/20 cursor-pointer shadow-xs"
+        >
+          <span className="flex items-center gap-2 truncate">
+            <IconComponent className="w-3.5 h-3.5 text-[#400404] shrink-0" />
+            <span className="truncate">{selectedRole.label}</span>
+          </span>
+          <ChevronDown className={`w-3.5 h-3.5 text-[#400404]/60 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-1.5 bg-[#FFFBED] border border-[#400404]/25 shadow-xl rounded-xl space-y-0.5 z-50" align="start">
+        {PAM_ROLES.map((role) => {
+          const RoleIcon = role.icon;
+          const isSelected = role.id === value;
+          return (
+            <button
+              key={role.id}
+              type="button"
+              onClick={() => {
+                onChange(role.id as PamRoleType);
+                setIsOpen(false);
+              }}
+              className={`group flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                isSelected ? 'bg-[#400404] text-[#FFFBED]' : 'text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED]'
+              }`}
+            >
+              <span className="flex items-center gap-2 truncate">
+                <RoleIcon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#FFFBED]' : 'text-[#400404] group-hover:text-[#FFFBED]'}`} />
+                <span className="truncate">{role.label}</span>
+              </span>
+              {isSelected && <Check className="w-3.5 h-3.5 text-[#FFFBED] shrink-0 ml-2" />}
+            </button>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   currentUser,
   users = [],
@@ -116,31 +232,6 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const editTeamSectionRef = useRef<HTMLDivElement | null>(null);
   const editLinksSectionRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-collapse section when user clicks outside / loses focus
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-
-      if (isTeamExpanded && teamSectionRef.current && !teamSectionRef.current.contains(target)) {
-        setIsTeamExpanded(false);
-      }
-      if (isLinksExpanded && linksSectionRef.current && !linksSectionRef.current.contains(target)) {
-        setIsLinksExpanded(false);
-      }
-      if (editIsTeamExpanded && editTeamSectionRef.current && !editTeamSectionRef.current.contains(target)) {
-        setEditIsTeamExpanded(false);
-      }
-      if (editIsLinksExpanded && editLinksSectionRef.current && !editLinksSectionRef.current.contains(target)) {
-        setEditIsLinksExpanded(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isTeamExpanded, isLinksExpanded, editIsTeamExpanded, editIsLinksExpanded]);
-
   // Open Create Modal (resets accordions to collapsed)
   const handleOpenCreateModal = () => {
     setIsTeamExpanded(false);
@@ -154,7 +245,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const [briefingText, setBriefingText] = useState('');
   const [externalOrderReference, setExternalOrderReference] = useState('');
   const [selectedDeadline, setSelectedDeadline] = useState<Date | undefined>(undefined);
-  const [autoIngest, setAutoIngest] = useState<boolean>(true);
+  const [autoIngest, setAutoIngest] = useState<boolean>(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [leadUserId, setLeadUserId] = useState<string>(currentUser.UserId);
   const [additionalEditors, setAdditionalEditors] = useState<FormEditorAssignment[]>([]);
@@ -168,8 +259,8 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const [editBriefingText, setEditBriefingText] = useState('');
   const [editExternalOrderReference, setEditExternalOrderReference] = useState('');
   const [editDeadline, setEditDeadline] = useState<Date | undefined>(undefined);
-  const [editStatus, setEditStatus] = useState<string>('InProduction');
-  const [editAutoIngest, setEditAutoIngest] = useState<boolean>(true);
+  const [editStatus, setEditStatus] = useState<string>('Draft');
+  const [editAutoIngest, setEditAutoIngest] = useState<boolean>(false);
   const [editLinkItems, setEditLinkItems] = useState<FormLinkItem[]>([]);
   const [editLeadUserId, setEditLeadUserId] = useState<string>('');
   const [editAdditionalEditors, setEditAdditionalEditors] = useState<FormEditorAssignment[]>([]);
@@ -334,20 +425,53 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
     }
   };
 
+  const detectLinkType = (url: string): LinkTypeOption => {
+    const cleanUrl = url.trim().toLowerCase();
+    if (!cleanUrl) return 'Folder';
+
+    if (cleanUrl.includes('/folders/')) {
+      return 'Folder';
+    }
+    if (cleanUrl.includes('/document/d/') || cleanUrl.includes('/spreadsheets/d/') || cleanUrl.includes('/presentation/d/')) {
+      return 'Document';
+    }
+    if (
+      cleanUrl.includes('/file/d/') ||
+      cleanUrl.match(/\.(mp4|mov|mkv|avi|webm|mp3|wav|aac|flac|png|jpg|jpeg|webp|pdf|docx?|txt)$/i)
+    ) {
+      return 'File';
+    }
+
+    return 'Other';
+  };
+
   const handleLinkChange = (
     id: string,
     field: 'url' | 'linkType',
     value: string,
     isEdit: boolean = false
   ) => {
-    if (isEdit) {
-      setEditLinkItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
-      );
+    if (field === 'url') {
+      const detectedType = detectLinkType(value);
+      if (isEdit) {
+        setEditLinkItems((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, url: value, linkType: detectedType } : item))
+        );
+      } else {
+        setLinkItems((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, url: value, linkType: detectedType } : item))
+        );
+      }
     } else {
-      setLinkItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
-      );
+      if (isEdit) {
+        setEditLinkItems((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+        );
+      } else {
+        setLinkItems((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+        );
+      }
     }
   };
 
@@ -995,7 +1119,10 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             <div ref={teamSectionRef} className="border border-[#400404]/15 rounded-xl bg-white/70 overflow-hidden transition-all">
               <button
                 type="button"
-                onClick={() => setIsTeamExpanded(!isTeamExpanded)}
+                onClick={() => {
+                  setIsTeamExpanded(!isTeamExpanded);
+                  if (!isTeamExpanded) setIsLinksExpanded(false);
+                }}
                 className="w-full p-3 bg-[#FFFBED]/80 hover:bg-[#400404]/5 border-b border-[#400404]/10 flex items-center justify-between cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-2">
@@ -1020,18 +1147,12 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                       <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                       <span>Editor Responsável (Lead Editor) *</span>
                     </label>
-                    <select
+                    <UserSelectDropdown
+                      users={users}
                       value={leadUserId}
-                      onChange={(e) => setLeadUserId(e.target.value)}
-                      required
-                      className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:ring-2 focus:ring-[#400404]/20 focus:outline-none cursor-pointer"
-                    >
-                      {users.map((u) => (
-                        <option key={u.UserId} value={u.UserId}>
-                          {u.Name} ({u.Email}) — {u.Role}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setLeadUserId}
+                      placeholder="Selecione o Editor Lead..."
+                    />
                   </div>
 
                   {/* Integrantes Adicionais & Funções PAM */}
@@ -1088,32 +1209,22 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                     )}
 
                     <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-                      <select
-                        value={selectedAddUser}
-                        onChange={(e) => setSelectedAddUser(e.target.value)}
-                        className="w-full sm:w-1/2 p-2 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:outline-none cursor-pointer"
-                      >
-                        <option value="">Selecione um editor...</option>
-                        {users
-                          .filter((u) => u.UserId !== leadUserId && !additionalEditors.some((ae) => ae.UserId === u.UserId))
-                          .map((u) => (
-                            <option key={u.UserId} value={u.UserId}>
-                              {u.Name} ({u.Email})
-                            </option>
-                          ))}
-                      </select>
+                      <div className="w-full sm:w-1/2">
+                        <UserSelectDropdown
+                          users={users}
+                          value={selectedAddUser}
+                          onChange={setSelectedAddUser}
+                          filterOutUserIds={[leadUserId, ...additionalEditors.map((ae) => ae.UserId)]}
+                          placeholder="Selecione um editor..."
+                        />
+                      </div>
 
-                      <select
-                        value={selectedAddRole}
-                        onChange={(e) => setSelectedAddRole(e.target.value as PamRoleType)}
-                        className="w-full sm:w-1/3 p-2 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:outline-none cursor-pointer"
-                      >
-                        {PAM_ROLES.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.label}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="w-full sm:w-1/3">
+                        <RoleSelectDropdown
+                          value={selectedAddRole}
+                          onChange={setSelectedAddRole}
+                        />
+                      </div>
 
                       <Button
                         type="button"
@@ -1133,7 +1244,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#400404]">ID do Pedido (Opcional - CRM Ref)</label>
+                <label className="text-xs font-semibold text-[#400404]">Id do Pedido (Opcional)</label>
                 <Input
                   type="text"
                   placeholder="Ex: #0254 ou ORD-88492"
@@ -1326,7 +1437,10 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
             <div ref={editTeamSectionRef} className="border border-[#400404]/15 rounded-xl bg-white/70 overflow-hidden transition-all">
               <button
                 type="button"
-                onClick={() => setEditIsTeamExpanded(!editIsTeamExpanded)}
+                onClick={() => {
+                  setEditIsTeamExpanded(!editIsTeamExpanded);
+                  if (!editIsTeamExpanded) setEditIsLinksExpanded(false);
+                }}
                 className="w-full p-3 bg-[#FFFBED]/80 hover:bg-[#400404]/5 border-b border-[#400404]/10 flex items-center justify-between cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-2">
@@ -1351,18 +1465,12 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                       <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                       <span>Editor Responsável (Lead Editor) *</span>
                     </label>
-                    <select
+                    <UserSelectDropdown
+                      users={users}
                       value={editLeadUserId}
-                      onChange={(e) => setEditLeadUserId(e.target.value)}
-                      required
-                      className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:ring-2 focus:ring-[#400404]/20 focus:outline-none cursor-pointer"
-                    >
-                      {users.map((u) => (
-                        <option key={u.UserId} value={u.UserId}>
-                          {u.Name} ({u.Email}) — {u.Role}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setEditLeadUserId}
+                      placeholder="Selecione o Editor Lead..."
+                    />
                   </div>
 
                   {/* Integrantes Adicionais & Funções PAM (Edit Modal) */}
@@ -1419,32 +1527,22 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                     )}
 
                     <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-                      <select
-                        value={editSelectedAddUser}
-                        onChange={(e) => setEditSelectedAddUser(e.target.value)}
-                        className="w-full sm:w-1/2 p-2 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:outline-none cursor-pointer"
-                      >
-                        <option value="">Selecione um editor...</option>
-                        {users
-                          .filter((u) => u.UserId !== editLeadUserId && !editAdditionalEditors.some((ae) => ae.UserId === u.UserId))
-                          .map((u) => (
-                            <option key={u.UserId} value={u.UserId}>
-                              {u.Name} ({u.Email})
-                            </option>
-                          ))}
-                      </select>
+                      <div className="w-full sm:w-1/2">
+                        <UserSelectDropdown
+                          users={users}
+                          value={editSelectedAddUser}
+                          onChange={setEditSelectedAddUser}
+                          filterOutUserIds={[editLeadUserId, ...editAdditionalEditors.map((ae) => ae.UserId)]}
+                          placeholder="Selecione um editor..."
+                        />
+                      </div>
 
-                      <select
-                        value={editSelectedAddRole}
-                        onChange={(e) => setEditSelectedAddRole(e.target.value as PamRoleType)}
-                        className="w-full sm:w-1/3 p-2 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:outline-none cursor-pointer"
-                      >
-                        {PAM_ROLES.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.label}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="w-full sm:w-1/3">
+                        <RoleSelectDropdown
+                          value={editSelectedAddRole}
+                          onChange={setEditSelectedAddRole}
+                        />
+                      </div>
 
                       <Button
                         type="button"
@@ -1462,31 +1560,14 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#400404]">Status do Projeto</label>
-                <select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value)}
-                  className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] focus:ring-2 focus:ring-[#400404]/20 focus:outline-none"
-                >
-                  <option value="Draft">Rascunho</option>
-                  <option value="InProduction">Em Produção</option>
-                  <option value="InReview">Em Revisão</option>
-                  <option value="Completed">Concluído</option>
-                  <option value="Cancelled">Cancelado</option>
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#400404]">ID do Pedido (CRM Ref)</label>
-                <Input
-                  type="text"
-                  value={editExternalOrderReference}
-                  onChange={(e) => setEditExternalOrderReference(e.target.value)}
-                  className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#400404]">Id do Pedido (Opcional)</label>
+              <Input
+                type="text"
+                value={editExternalOrderReference}
+                onChange={(e) => setEditExternalOrderReference(e.target.value)}
+                className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20"
+              />
             </div>
 
             <div className="space-y-1.5">
