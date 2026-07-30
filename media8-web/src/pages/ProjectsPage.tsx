@@ -28,6 +28,9 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  Archive,
+  RotateCcw,
+  ShieldAlert,
 } from 'lucide-react';
 import { format, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -38,6 +41,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Calendar } from '../components/ui/calendar';
 import { LinkTypeSelect, LinkTypeOption } from '../components/LinkTypeSelect';
+import { ConfirmModal } from '../components/ui/confirm-modal';
 import {
   Popover,
   PopoverContent,
@@ -178,6 +182,12 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
+  const [archiveTargetProject, setArchiveTargetProject] = useState<Project | null>(null);
+  const [restoreTargetProject, setRestoreTargetProject] = useState<Project | null>(null);
+  const [hardDeleteTargetProject, setHardDeleteTargetProject] = useState<Project | null>(null);
+  const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const observerTarget = useRef<HTMLDivElement | null>(null);
   const today = startOfDay(new Date());
 
@@ -188,13 +198,13 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
     if (!targetUserId) return;
     if (targetUserId === currentLead) {
-      alert('O Editor Responsável já está atribuído como Lead do projeto.');
+      setValidationError('O Editor Responsável já está atribuído como Lead do projeto.');
       return;
     }
 
     const currentList = isEdit ? editAdditionalEditors : additionalEditors;
     if (currentList.some((e) => e.UserId === targetUserId)) {
-      alert('Este usuário já foi adicionado à equipe do projeto.');
+      setValidationError('Este usuário já foi adicionado à equipe do projeto.');
       return;
     }
 
@@ -500,20 +510,54 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
       );
       fetchInitialProjects();
     } catch (err) {
-      alert('Erro ao disparar ingestão das mídias.');
+      setErrorMessage('Erro ao disparar ingestão das mídias.');
     } finally {
       setTriggeringIngestId(null);
     }
   };
 
-  const handleDeleteProject = async (projectId: string) => {
-    if (!confirm('Deseja realmente remover este projeto?')) return;
-
+  const handleArchiveConfirm = async () => {
+    if (!archiveTargetProject) return;
     try {
-      await ProjectService.deleteProject(projectId, true);
+      setIsActionLoading(true);
+      await ProjectService.deleteProject(archiveTargetProject.ProjectId, true);
+      setFeedbackMessage(`Projeto '${archiveTargetProject.Title}' arquivado com sucesso. As mídias do disco foram purgadas.`);
+      setArchiveTargetProject(null);
       fetchInitialProjects();
     } catch (err) {
-      alert('Erro ao remover o projeto.');
+      setErrorMessage('Erro ao arquivar o projeto.');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleRestoreConfirm = async () => {
+    if (!restoreTargetProject) return;
+    try {
+      setIsActionLoading(true);
+      await ProjectService.restoreProject(restoreTargetProject.ProjectId);
+      setFeedbackMessage(`Projeto '${restoreTargetProject.Title}' restaurado com sucesso para Em Produção.`);
+      setRestoreTargetProject(null);
+      fetchInitialProjects();
+    } catch (err) {
+      setErrorMessage('Erro ao restaurar o projeto.');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleHardDeleteConfirm = async () => {
+    if (!hardDeleteTargetProject) return;
+    try {
+      setIsActionLoading(true);
+      await ProjectService.deleteProject(hardDeleteTargetProject.ProjectId, false);
+      setFeedbackMessage(`Projeto '${hardDeleteTargetProject.Title}' excluído permanentemente.`);
+      setHardDeleteTargetProject(null);
+      fetchInitialProjects();
+    } catch (err) {
+      setErrorMessage('Erro ao excluir o projeto permanentemente.');
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -589,6 +633,16 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
         </div>
       )}
 
+      {errorMessage && (
+        <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-xs font-medium text-red-900 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-700 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button onClick={() => setErrorMessage(null)} className="text-xs text-red-800 underline font-medium cursor-pointer">Fechar</button>
+        </div>
+      )}
+
       {/* Search & Status Filters */}
       <div className="bg-white p-3.5 rounded-xl border border-[#400404]/15 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -622,6 +676,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
               { id: 'InReview', label: 'Em Revisão' },
               { id: 'Completed', label: 'Concluídos' },
               { id: 'Draft', label: 'Rascunhos' },
+              { id: 'Archived', label: 'Arquivados' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -816,20 +871,43 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
                     {currentUser.Role === 'Admin' && (
                       <div className="flex items-center gap-1 ml-1">
-                        <button
-                          onClick={() => handleOpenEditModal(proj)}
-                          title="Editar Projeto"
-                          className="text-[#400404]/70 hover:text-[#400404] hover:bg-[#400404]/10 p-1 rounded transition-colors cursor-pointer"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProject(proj.ProjectId)}
-                          title="Excluir Projeto"
-                          className="text-red-700/80 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {filterStatus !== 'Archived' && !proj.IsDeleted && proj.Status !== 'Archived' ? (
+                          <>
+                            <button
+                              onClick={() => handleOpenEditModal(proj)}
+                              title="Editar Projeto"
+                              className="text-[#400404]/70 hover:text-[#400404] hover:bg-[#400404]/10 p-1.5 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setArchiveTargetProject(proj)}
+                              title="Arquivar Projeto"
+                              className="text-amber-800 hover:text-amber-950 p-1.5 rounded-lg hover:bg-amber-100/60 transition-colors cursor-pointer"
+                            >
+                              <Archive className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => setRestoreTargetProject(proj)}
+                              title="Restaurar Projeto"
+                              className="text-emerald-700 hover:text-emerald-900 p-1.5 rounded-lg hover:bg-emerald-100/60 transition-colors cursor-pointer flex items-center gap-1 text-xs font-medium"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Restaurar</span>
+                            </button>
+                            <button
+                              onClick={() => setHardDeleteTargetProject(proj)}
+                              title="Deletar Permanentemente"
+                              className="text-red-700 hover:text-red-900 p-1.5 rounded-lg hover:bg-red-100/60 transition-colors cursor-pointer flex items-center gap-1 text-xs font-medium"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Deletar</span>
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1484,6 +1562,43 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Confirmação de Arquivamento */}
+      <ConfirmModal
+        isOpen={!!archiveTargetProject}
+        onClose={() => setArchiveTargetProject(null)}
+        onConfirm={handleArchiveConfirm}
+        title="Arquivar Projeto"
+        description={`Deseja arquivar o projeto '${archiveTargetProject?.Title}'? As mídias físicas no disco serão purgadas para otimizar espaço, mas todos os metadados continuarão salvos e o projeto poderá ser restaurado a qualquer momento.`}
+        confirmText="Arquivar Projeto"
+        variant="archive"
+        isLoading={isActionLoading}
+      />
+
+      {/* Modal de Confirmação de Restauração */}
+      <ConfirmModal
+        isOpen={!!restoreTargetProject}
+        onClose={() => setRestoreTargetProject(null)}
+        onConfirm={handleRestoreConfirm}
+        title="Restaurar Projeto"
+        description={`Deseja restaurar o projeto '${restoreTargetProject?.Title}' para Em Produção?`}
+        confirmText="Restaurar Projeto"
+        variant="restore"
+        isLoading={isActionLoading}
+      />
+
+      {/* Modal de Exclusão Permanente (Alta Segurança com Trava de 3s) */}
+      <ConfirmModal
+        isOpen={!!hardDeleteTargetProject}
+        onClose={() => setHardDeleteTargetProject(null)}
+        onConfirm={handleHardDeleteConfirm}
+        title="Deletar Permanentemente"
+        description={`ATENÇÃO: Esta ação excluirá PERMANENTEMENTE o projeto '${hardDeleteTargetProject?.Title}', todas as mídias físicas, tarefas e registros do banco de dados. Esta ação NÃO PODE ser desfeita.`}
+        confirmText="Excluir Permanentemente"
+        variant="danger"
+        countdownSeconds={3}
+        isLoading={isActionLoading}
+      />
     </div>
   );
 };

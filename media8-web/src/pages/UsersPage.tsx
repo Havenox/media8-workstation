@@ -150,7 +150,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Por favor, selecione um arquivo de imagem válido (JPG, PNG, WebP ou GIF).');
+      setFormError('Por favor, selecione um arquivo de imagem válido (JPG, PNG, WebP ou GIF).');
       return;
     }
 
@@ -213,7 +213,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
       loadUserStats();
       if (onRefreshUsers) onRefreshUsers();
     } catch (err: any) {
-      alert(err.response?.data?.Message || 'Erro ao cadastrar usuário.');
+      setFormError(err.response?.data?.Message || 'Erro ao cadastrar usuário.');
     } finally {
       setIsSubmitting(false);
     }
@@ -282,7 +282,7 @@ export const UsersPage: React.FC<UsersPageProps> = ({
       loadUserStats();
       if (onRefreshUsers) onRefreshUsers();
     } catch (err: any) {
-      alert(err.response?.data?.Message || 'Erro ao atualizar usuário.');
+      setFormError(err.response?.data?.Message || 'Erro ao atualizar usuário.');
     } finally {
       setIsSubmitting(false);
     }

@@ -207,6 +207,11 @@ export const ProjectService = {
       params: { soft },
     });
   },
+
+  restoreProject: async (id: string): Promise<Project> => {
+    const response = await api.post<Project>(`/Projects/${id}/Restore`);
+    return response.data;
+  },
 };
 
 export const AssetService = {

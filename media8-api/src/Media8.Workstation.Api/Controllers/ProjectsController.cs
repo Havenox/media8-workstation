@@ -124,12 +124,14 @@ public class ProjectsController(WorkstationDbContext context, IConfiguration con
 
         Guid.TryParse(userIdClaim, out var currentUserId);
 
+        bool isArchivedQuery = !string.IsNullOrWhiteSpace(status) && status.Equals("Archived", StringComparison.OrdinalIgnoreCase);
+
         var query = _context.Projects
             .Include(p => p.Links)
             .Include(p => p.Assets)
             .Include(p => p.AssignedEditors)
                 .ThenInclude(e => e.User)
-            .Where(p => !p.IsDeleted)
+            .Where(p => isArchivedQuery ? (p.IsDeleted || p.Status == "Archived") : !p.IsDeleted)
             .AsNoTracking();
 
         if (roleClaim != "Admin")
@@ -137,7 +139,7 @@ public class ProjectsController(WorkstationDbContext context, IConfiguration con
             query = query.Where(p => p.AssignedEditors.Any(e => e.UserId == currentUserId));
         }
 
-        if (!string.IsNullOrWhiteSpace(status) && status.ToUpper() != "ALL")
+        if (!string.IsNullOrWhiteSpace(status) && status.ToUpper() != "ALL" && !isArchivedQuery)
         {
             query = query.Where(p => p.Status == status);
         }
@@ -558,6 +560,23 @@ public class ProjectsController(WorkstationDbContext context, IConfiguration con
         }
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Restaura um projeto arquivado para o status Em Produção.
+    /// </summary>
+    [HttpPost("{id:guid}/Restore")]
+    public async Task<IActionResult> RestoreProject(Guid id)
+    {
+        var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == id);
+        if (project == null) return NotFound();
+
+        project.IsDeleted = false;
+        project.Status = "InProduction";
+        project.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return Ok(project);
     }
 
     private void PurgeAssetDiskFiles(WorkstationAsset asset)
