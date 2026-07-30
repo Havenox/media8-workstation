@@ -104,7 +104,7 @@ const UserSelectDropdown: React.FC<{
         <button
           type="button"
           disabled={disabled}
-          className="w-full flex items-center justify-between gap-2 p-2.5 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs font-medium text-[#400404] transition-all focus:outline-none focus:ring-2 focus:ring-[#400404]/20 cursor-pointer shadow-xs disabled:opacity-50"
+          className="w-full h-10 px-3.5 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs font-medium text-[#400404] transition-all focus:outline-none focus:ring-1 focus:ring-[#400404]/20 flex items-center justify-between gap-2 cursor-pointer shadow-xs disabled:opacity-50"
         >
           <span className="flex items-center gap-2 truncate">
             {selectedUser ? (
@@ -182,7 +182,7 @@ const RoleSelectDropdown: React.FC<{
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="w-full flex items-center justify-between gap-2 p-2.5 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs font-semibold text-[#400404] transition-all focus:outline-none focus:ring-2 focus:ring-[#400404]/20 cursor-pointer shadow-xs"
+          className="w-full h-10 px-3.5 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs font-semibold text-[#400404] transition-all focus:outline-none focus:ring-1 focus:ring-[#400404]/20 flex items-center justify-between gap-2 cursor-pointer shadow-xs"
         >
           <span className="flex items-center gap-2 truncate">
             <IconComponent className="w-3.5 h-3.5 text-[#400404] shrink-0" />
@@ -203,7 +203,7 @@ const RoleSelectDropdown: React.FC<{
                 onChange(role.id as PamRoleType);
                 setIsOpen(false);
               }}
-              className={`group flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+              className={`group flex items-center justify-between w-full px-2.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                 isSelected ? 'bg-[#400404] text-[#FFFBED]' : 'text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED]'
               }`}
             >
@@ -1130,7 +1130,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
-                className="bg-white text-xs font-normal text-[#400404] border-[#400404]/20 rounded-lg"
+                className="bg-white text-xs font-normal text-[#400404] border-[#400404]/20 rounded-xl h-10 px-3.5 focus:border-[#400404] focus:ring-1 focus:ring-[#400404]/20"
               />
             </div>
 
@@ -1250,7 +1250,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                         variant="outline"
                         onClick={() => handleAddAdditionalEditor(false)}
                         disabled={!selectedAddUser}
-                        className="w-full sm:w-auto text-xs font-medium py-2 px-3 border-[#400404]/25 text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] shrink-0 cursor-pointer"
+                        className="w-full sm:w-auto h-10 text-xs font-semibold px-4 border-[#400404]/25 text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] shrink-0 cursor-pointer rounded-xl"
                       >
                         <UserPlus className="w-3.5 h-3.5 mr-1 shrink-0" />
                         <span>Adicionar</span>
@@ -1269,7 +1269,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   placeholder="Ex: #0254 ou ORD-88492"
                   value={externalOrderReference}
                   onChange={(e) => setExternalOrderReference(e.target.value)}
-                  className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 rounded-lg"
+                  className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 rounded-xl h-10 px-3.5 focus:border-[#400404] focus:ring-1 focus:ring-[#400404]/20"
                 />
               </div>
 
@@ -1279,7 +1279,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="w-full flex items-center justify-between p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-medium text-[#400404] hover:border-[#400404] transition-colors focus:ring-2 focus:ring-[#400404] cursor-pointer"
+                      className="w-full h-10 px-3.5 flex items-center justify-between bg-white border border-[#400404]/20 rounded-xl text-xs font-medium text-[#400404] hover:border-[#400404] transition-colors focus:outline-none focus:ring-1 focus:ring-[#400404]/20 cursor-pointer shadow-xs"
                     >
                       <span className="flex items-center gap-2">
                         <CalendarIcon className="w-4 h-4 text-[#400404]/70 shrink-0" />
@@ -1329,7 +1329,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 placeholder="Insira aqui as marcações, observações do cliente e estilo de cortes..."
                 value={briefingText}
                 onChange={(e) => setBriefingText(e.target.value)}
-                className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-normal text-[#400404] focus:outline-none focus:ring-2 focus:ring-[#400404]"
+                className="w-full p-3 bg-white border border-[#400404]/20 rounded-xl text-xs font-normal text-[#400404] focus:outline-none focus:border-[#400404] focus:ring-1 focus:ring-[#400404]/20 min-h-[90px]"
               />
             </div>
 
@@ -1369,13 +1369,14 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                           placeholder="https://drive.google.com/drive/folders/..."
                           value={item.url}
                           onChange={(e) => handleLinkChange(item.id, 'url', e.target.value)}
-                          className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 flex-1"
+                          className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 rounded-xl h-10 px-3.5 focus:border-[#400404] focus:ring-1 focus:ring-[#400404]/20 flex-1"
                         />
 
                         <button
                           type="button"
                           onClick={() => handleRemoveLinkField(item.id)}
-                          className="p-2 text-red-700/80 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          className="h-10 w-10 flex items-center justify-center text-red-700/80 hover:text-red-900 hover:bg-red-50 rounded-xl border border-[#400404]/15 transition-colors cursor-pointer shrink-0"
+                          title="Remover link"
                         >
                           <Trash2 className="w-4 h-4 shrink-0" />
                         </button>
@@ -1386,14 +1387,14 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   <button
                     type="button"
                     onClick={() => handleAddLinkField()}
-                    className="group w-full py-2 px-4 rounded-xl border border-[#400404]/25 bg-white text-[#400404] font-medium text-xs hover:bg-[#400404] hover:text-[#FFFBED] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="group w-full h-10 rounded-xl border border-[#400404]/25 bg-white text-[#400404] font-semibold text-xs hover:bg-[#400404] hover:text-[#FFFBED] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                   >
                     <Plus className="w-4 h-4 text-[#400404] group-hover:text-[#FFFBED] transition-colors shrink-0" />
                     <span>Adicionar Link</span>
                   </button>
 
                   {/* Switch Minimalista de Ingestão Automática (Abaixo dos Links) */}
-                  <div className="p-2.5 bg-[#FFFBED]/50 border border-[#400404]/15 rounded-lg flex items-center justify-between">
+                  <div className="h-10 px-3.5 bg-[#FFFBED]/60 border border-[#400404]/15 rounded-xl flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <RefreshCw className="w-4 h-4 text-[#400404] shrink-0" />
                       <span className="text-xs font-semibold text-[#400404]">Processar mídias automaticamente</span>
@@ -1448,7 +1449,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
                 required
-                className="bg-white text-xs font-normal text-[#400404] border-[#400404]/20"
+                className="bg-white text-xs font-normal text-[#400404] border-[#400404]/20 rounded-xl h-10 px-3.5 focus:border-[#400404] focus:ring-1 focus:ring-[#400404]/20"
               />
             </div>
 
@@ -1568,7 +1569,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                         variant="outline"
                         onClick={() => handleAddAdditionalEditor(true)}
                         disabled={!editSelectedAddUser}
-                        className="w-full sm:w-auto text-xs font-medium py-2 px-3 border-[#400404]/25 text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] shrink-0 cursor-pointer"
+                        className="w-full sm:w-auto h-10 text-xs font-semibold px-4 border-[#400404]/25 text-[#400404] hover:bg-[#400404] hover:text-[#FFFBED] shrink-0 cursor-pointer rounded-xl"
                       >
                         <UserPlus className="w-3.5 h-3.5 mr-1 shrink-0" />
                         <span>Adicionar</span>
@@ -1585,7 +1586,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 type="text"
                 value={editExternalOrderReference}
                 onChange={(e) => setEditExternalOrderReference(e.target.value)}
-                className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20"
+                className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 rounded-xl h-10 px-3.5 focus:border-[#400404] focus:ring-1 focus:ring-[#400404]/20"
               />
             </div>
 
@@ -1595,7 +1596,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 rows={3}
                 value={editBriefingText}
                 onChange={(e) => setEditBriefingText(e.target.value)}
-                className="w-full p-2.5 bg-white border border-[#400404]/20 rounded-lg text-xs font-normal text-[#400404]"
+                className="w-full p-3 bg-white border border-[#400404]/20 rounded-xl text-xs font-normal text-[#400404] focus:outline-none focus:border-[#400404] focus:ring-1 focus:ring-[#400404]/20 min-h-[90px]"
               />
             </div>
 
@@ -1634,13 +1635,14 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                           type="url"
                           value={item.url}
                           onChange={(e) => handleLinkChange(item.id, 'url', e.target.value, true)}
-                          className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 flex-1"
+                          className="bg-white text-xs font-mono font-normal text-[#400404] border-[#400404]/20 rounded-xl h-10 px-3.5 focus:border-[#400404] focus:ring-1 focus:ring-[#400404]/20 flex-1"
                         />
 
                         <button
                           type="button"
                           onClick={() => handleRemoveLinkField(item.id, true)}
-                          className="p-2 text-red-700/80 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          className="h-10 w-10 flex items-center justify-center text-red-700/80 hover:text-red-900 hover:bg-red-50 rounded-xl border border-[#400404]/15 transition-colors cursor-pointer shrink-0"
+                          title="Remover link"
                         >
                           <Trash2 className="w-4 h-4 shrink-0" />
                         </button>
@@ -1651,14 +1653,14 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   <button
                     type="button"
                     onClick={() => handleAddLinkField(true)}
-                    className="group w-full py-2 px-4 rounded-xl border border-[#400404]/25 bg-white text-[#400404] font-medium text-xs hover:bg-[#400404] hover:text-[#FFFBED] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="group w-full h-10 rounded-xl border border-[#400404]/25 bg-white text-[#400404] font-semibold text-xs hover:bg-[#400404] hover:text-[#FFFBED] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                   >
                     <Plus className="w-4 h-4 text-[#400404] group-hover:text-[#FFFBED] transition-colors shrink-0" />
                     <span>Adicionar Link</span>
                   </button>
 
                   {/* Switch Minimalista de Ingestão Automática (Edit - Abaixo dos Links) */}
-                  <div className="p-2.5 bg-[#FFFBED]/50 border border-[#400404]/15 rounded-lg flex items-center justify-between">
+                  <div className="h-10 px-3.5 bg-[#FFFBED]/60 border border-[#400404]/15 rounded-xl flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <RefreshCw className="w-4 h-4 text-[#400404] shrink-0" />
                       <span className="text-xs font-semibold text-[#400404]">Processar mídias automaticamente</span>

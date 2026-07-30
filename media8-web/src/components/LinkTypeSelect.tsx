@@ -38,7 +38,7 @@ export const LinkTypeSelect: React.FC<LinkTypeSelectProps> = ({ value, onChange 
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center justify-between gap-2 px-3 py-2 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs font-semibold text-[#400404] transition-all focus:outline-none focus:ring-2 focus:ring-[#400404]/20 shrink-0 min-w-[125px] cursor-pointer shadow-xs"
+          className="flex items-center justify-between gap-2 h-10 px-3.5 bg-white border border-[#400404]/20 hover:border-[#400404] rounded-xl text-xs font-semibold text-[#400404] transition-all focus:outline-none focus:ring-1 focus:ring-[#400404]/20 shrink-0 min-w-[130px] cursor-pointer shadow-xs"
         >
           <span className="flex items-center gap-2 truncate">
             <SelectedIcon className="w-3.5 h-3.5 text-[#400404] shrink-0" />
