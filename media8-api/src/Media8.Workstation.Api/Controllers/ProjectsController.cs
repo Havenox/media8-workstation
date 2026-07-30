@@ -599,16 +599,15 @@ public class ProjectsController(WorkstationDbContext context, IConfiguration con
     {
         var storageBasePath = _configuration["STORAGE_PATH"] ?? (Directory.Exists("/storage") ? "/storage" : Path.Combine(Directory.GetCurrentDirectory(), "storage"));
 
-        var rawDir = Path.Combine(storageBasePath, "raw", projectId.ToString());
-        if (Directory.Exists(rawDir))
-        {
-            try { Directory.Delete(rawDir, true); } catch { }
-        }
+        string[] subDirs = ["high-fidelity", "proxies", "proxy", "raw", "waveforms"];
 
-        var proxyDir = Path.Combine(storageBasePath, "proxy", projectId.ToString());
-        if (Directory.Exists(proxyDir))
+        foreach (var subDirName in subDirs)
         {
-            try { Directory.Delete(proxyDir, true); } catch { }
+            var targetDir = Path.Combine(storageBasePath, subDirName, projectId.ToString());
+            if (Directory.Exists(targetDir))
+            {
+                try { Directory.Delete(targetDir, recursive: true); } catch { }
+            }
         }
     }
 }
