@@ -98,6 +98,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           const isActive =
             item.path === '/'
               ? currentPath === '/' || currentPath === '/dashboard'
+              : item.path === '/projects'
+              ? currentPath === '/projects' || currentPath.startsWith('/projects/')
               : currentPath.startsWith(item.path);
 
           const Icon = item.icon;

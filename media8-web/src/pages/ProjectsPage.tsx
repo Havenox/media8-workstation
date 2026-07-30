@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -91,6 +92,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 }) => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
 
   // Infinite Scroll & Pagination States
   const [projectsList, setProjectsList] = useState<Project[]>([]);
@@ -927,12 +929,12 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
                   {!isArchived && (
                     <Button
-                      onClick={() => onOpenWorkstation(proj)}
+                      onClick={() => navigate(`/projects/${proj.ProjectId}`)}
                       size="sm"
-                      className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-1.5 px-3 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      className="bg-[#400404] hover:bg-[#5C1212] text-[#FFFBED] font-medium text-xs py-1.5 px-3.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs border-none"
                     >
-                      <Play className="w-3 h-3 fill-current" />
-                      <span>Abrir na Workstation</span>
+                      <FolderKanban className="w-3.5 h-3.5" />
+                      <span>Abrir Projeto</span>
                     </Button>
                   )}
                 </div>

@@ -33,6 +33,9 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
       case '/notifications':
         return { breadcrumbs: ['Home', 'Notificações'], title: 'Central de Notificações' };
       default:
+        if (pathname.startsWith('/projects/')) {
+          return { breadcrumbs: ['Home', 'Projetos', 'Visão Geral do Projeto'], title: 'Detalhes & Media Pool do Projeto' };
+        }
         if (pathname.startsWith('/workstation/')) {
           return { breadcrumbs: ['Home', 'Workstation PAM'], title: 'Estação de Corte & Timecode' };
         }
@@ -51,7 +54,17 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
             {breadcrumbs[0]}
           </Link>
           <ChevronRight className="w-3 h-3 text-[#400404]/40 shrink-0" />
-          <span className="text-[#400404] font-semibold">{breadcrumbs[1]}</span>
+          {breadcrumbs.length > 2 ? (
+            <>
+              <Link to="/projects" className="hover:text-[#400404] transition-colors">
+                {breadcrumbs[1]}
+              </Link>
+              <ChevronRight className="w-3 h-3 text-[#400404]/40 shrink-0" />
+              <span className="text-[#400404] font-semibold">{breadcrumbs[2]}</span>
+            </>
+          ) : (
+            <span className="text-[#400404] font-semibold">{breadcrumbs[1]}</span>
+          )}
         </nav>
 
         <h1 className="text-lg font-bold text-[#400404] tracking-tight leading-tight mt-0.5">

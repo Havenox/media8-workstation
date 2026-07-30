@@ -13,6 +13,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { AppLayout } from './components/layout/AppLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
+import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { WorkstationPage } from './pages/WorkstationPage';
 import { JobsPage } from './pages/JobsPage';
 import { UsersPage } from './pages/UsersPage';
@@ -251,6 +252,10 @@ export function AppContent() {
               />
             )
           }
+        />
+        <Route
+          path="/projects/:projectId"
+          element={<ProjectDetailPage currentUser={currentUser || undefined} />}
         />
         <Route
           path="/workstation"
