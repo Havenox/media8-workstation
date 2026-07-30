@@ -716,22 +716,22 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-stretch">
             {projectsList.map((proj) => {
               const isArchived = proj.IsDeleted || proj.Status === 'Archived' || filterStatus === 'Archived';
 
               return (
                 <div
                   key={proj.ProjectId}
-                  className="bg-white rounded-xl border border-[#400404]/15 shadow-xs hover:shadow-sm transition-all p-5 flex flex-col justify-between space-y-4"
+                  className="bg-white rounded-xl border border-[#400404]/15 shadow-xs hover:shadow-sm transition-all p-5 flex flex-col justify-between h-full min-h-[310px]"
                 >
-                  <div>
+                  <div className="flex-1 flex flex-col">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <h3 className="font-semibold text-base text-[#400404] truncate tracking-tight">{proj.Title}</h3>
                       {getStatusBadge(isArchived ? 'Archived' : proj.Status)}
                     </div>
 
-                    <div className="flex flex-wrap gap-2 items-center mb-3">
+                    <div className="flex flex-wrap gap-2 items-center mb-3 min-h-[24px]">
                       {proj.ExternalOrderReference && (
                         <div className="text-[11px] font-mono font-medium text-[#400404] bg-[#400404]/5 px-2 py-0.5 rounded border border-[#400404]/15 inline-block">
                           CRM Ref: #{proj.ExternalOrderReference}
@@ -746,53 +746,55 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                       )}
                     </div>
 
-                    <p className="text-xs text-[#5C1212] font-normal line-clamp-3 bg-[#FFFBED]/60 p-3 rounded-lg border border-[#400404]/10 leading-relaxed mb-3">
+                    <p className="text-xs text-[#5C1212] font-normal line-clamp-2 bg-[#FFFBED]/60 p-2.5 rounded-lg border border-[#400404]/10 leading-relaxed mb-3 min-h-[52px] flex-1">
                       {proj.BriefingText || 'Nenhum briefing especificado.'}
                     </p>
 
-                    {proj.Links && proj.Links.length > 0 && (
-                      <div className="space-y-2 pt-1 border-t border-[#400404]/10">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[11px] font-semibold text-[#400404]/80 uppercase tracking-wider">
-                            Links Anexados ({proj.Links.length})
-                          </p>
+                    <div className="mt-auto">
+                      {proj.Links && proj.Links.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t border-[#400404]/10 mb-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-semibold text-[#400404]/80 uppercase tracking-wider">
+                              Links Anexados ({proj.Links.length})
+                            </p>
 
-                          {!isArchived && (
-                            <button
-                              onClick={() => handleTriggerIngest(proj.ProjectId)}
-                              disabled={triggeringIngestId === proj.ProjectId}
-                              className="group inline-flex items-center gap-1.5 text-[11px] font-medium text-[#400404] bg-[#FFFBED] hover:bg-[#400404] hover:text-[#FFFBED] border border-[#400404]/20 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
-                            >
-                              {triggeringIngestId === proj.ProjectId ? (
-                                <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                              ) : (
-                                <Zap className="w-3 h-3 text-[#400404] group-hover:text-[#FFFBED] shrink-0 transition-colors" />
-                              )}
-                              <span>Iniciar Ingestão</span>
-                            </button>
-                          )}
+                            {!isArchived && (
+                              <button
+                                onClick={() => handleTriggerIngest(proj.ProjectId)}
+                                disabled={triggeringIngestId === proj.ProjectId}
+                                className="group inline-flex items-center gap-1.5 text-[11px] font-medium text-[#400404] bg-[#FFFBED] hover:bg-[#400404] hover:text-[#FFFBED] border border-[#400404]/20 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                              >
+                                {triggeringIngestId === proj.ProjectId ? (
+                                  <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                                ) : (
+                                  <Zap className="w-3 h-3 text-[#400404] group-hover:text-[#FFFBED] shrink-0 transition-colors" />
+                                )}
+                                <span>Iniciar Ingestão</span>
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5">
+                            {proj.Links.map((lnk, idx) => (
+                              <a
+                                key={idx}
+                                href={lnk.Url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group inline-flex items-center gap-1.5 text-[11px] font-medium bg-[#FFFBED]/80 text-[#400404] px-2.5 py-1 rounded-md border border-[#400404]/15 hover:bg-[#400404] hover:text-[#FFFBED] transition-colors"
+                              >
+                                {getLinkIcon(lnk.LinkType)}
+                                <span className="truncate max-w-[120px]">{lnk.LinkType}</span>
+                                <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 transition-all shrink-0" />
+                              </a>
+                            ))}
+                          </div>
                         </div>
-
-                      <div className="flex flex-wrap gap-1.5">
-                        {proj.Links.map((lnk, idx) => (
-                          <a
-                            key={idx}
-                            href={lnk.Url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group inline-flex items-center gap-1.5 text-[11px] font-medium bg-[#FFFBED]/80 text-[#400404] px-2.5 py-1 rounded-md border border-[#400404]/15 hover:bg-[#400404] hover:text-[#FFFBED] transition-colors"
-                          >
-                            {getLinkIcon(lnk.LinkType)}
-                            <span className="truncate max-w-[120px]">{lnk.LinkType}</span>
-                            <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 transition-all shrink-0" />
-                          </a>
-                        ))}
-                      </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                <div className="pt-3 border-t border-[#400404]/10 flex items-center justify-between">
+                  <div className="pt-3 border-t border-[#400404]/10 flex items-center justify-between mt-auto shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 text-xs text-[#400404]/80 font-medium font-mono">
                       <Film className="w-3.5 h-3.5 text-[#400404]/60" />
